@@ -2,9 +2,29 @@
 
 📝 Track GitHub reviews you have received on your pull requests
 
+A simple CLI tool that helps you see all the code reviews you've received across your GitHub repositories. Perfect for tracking feedback, understanding your code review patterns, and generating reports.
+
+## Quick Start
+
+1. **Install globally:**
+   ```bash
+   npm install -g get-gh-reviews
+   ```
+
+2. **Get your GitHub token:**
+   - Visit [GitHub Settings > Tokens](https://github.com/settings/tokens)
+   - Create a token with `repo` or `public_repo` scope
+
+3. **Run the command:**
+   ```bash
+   get-gh-reviews reviews -u YOUR_GITHUB_USERNAME -t YOUR_TOKEN
+   ```
+
+That's it! 🎉
+
 ## Overview
 
-`get-gh-reviews` is a CLI tool and npm package written in TypeScript that helps developers track the feedback they receive during code review. It addresses the GitHub feature gap where there's no consolidated view of all reviews you've received on your pull requests.
+`get-gh-reviews` addresses the GitHub feature gap where there's no consolidated view of all reviews you've received on your pull requests. See who's been reviewing your code, what feedback you're getting, and track your development patterns.
 
 ## Features
 
@@ -30,67 +50,92 @@ npm install -g get-gh-reviews
 npm install get-gh-reviews
 ```
 
-## Setup
+## Setup Options
 
-You'll need a GitHub Personal Access Token with appropriate permissions:
+### Option 1: Use Token Directly (Recommended for first-time users)
+```bash
+get-gh-reviews reviews -u your-username -t your_github_token
+```
 
-1. Go to [GitHub Settings > Developer settings > Personal access tokens](https://github.com/settings/tokens)
-2. Generate a new token with these scopes:
-   - `repo` (for private repositories)
-   - `public_repo` (for public repositories)
-3. Set the token as an environment variable:
+### Option 2: Save Token in Config File (Convenient for regular use)
 
+When you first run the tool, it automatically creates a config file at `~/.get-gh-reviews.env`. Just edit it:
+
+```bash
+# The tool will create this file automatically
+nano ~/.get-gh-reviews.env
+
+# Then replace 'your_token_here' with your actual token
+GITHUB_TOKEN=ghp_your_actual_token_here
+```
+
+### Option 3: Environment Variable
 ```bash
 export GITHUB_TOKEN="your_token_here"
+get-gh-reviews reviews -u your-username
 ```
 
-Or create a `.env` file:
+### Getting Your GitHub Token
+
+1. Go to [GitHub Settings > Tokens](https://github.com/settings/tokens)
+2. Click "Generate new token" → "Generate new token (classic)"
+3. Select scopes:
+   - ✅ `repo` (for private repositories)
+   - ✅ `public_repo` (for public repositories only)
+4. Copy the token (starts with `ghp_`)
+
+## Common Usage Examples
+
+### 📋 Basic Commands
 
 ```bash
-echo "GITHUB_TOKEN=your_token_here" > .env
-```
-
-## CLI Usage
-
-### Get Reviews Received
-
-```bash
-# Basic usage
+# See all reviews you've received
 get-gh-reviews reviews -u your-username
 
-# Filter by organization
-get-gh-reviews reviews -u your-username -o your-org
-
-# Filter by time (last 30 days)
-get-gh-reviews reviews -u your-username -d 30
-
-# Filter by PR state
-get-gh-reviews reviews -u your-username -s open
-
-# JSON output
-get-gh-reviews reviews -u your-username --json
-
-# Markdown file output
-get-gh-reviews reviews -u your-username --markdown my-reviews
-
-# With custom token
-get-gh-reviews reviews -u your-username -t your_token_here
-```
-
-### Get Review Statistics
-
-```bash
-# Basic stats
+# Get review statistics (who reviews you most, etc.)
 get-gh-reviews stats -u your-username
 
-# Organization stats
-get-gh-reviews stats -u your-username -o your-org
+# See reviews from last 30 days only
+get-gh-reviews reviews -u your-username -d 30
 
-# Last 7 days stats
-get-gh-reviews stats -u your-username -d 7
+# Export reviews to a Markdown report
+get-gh-reviews reviews -u your-username --markdown my-reviews.md
+```
 
-# JSON output
-get-gh-reviews stats -u your-username --json
+### 🏢 For Teams & Organizations
+
+```bash
+# Filter reviews from a specific organization
+get-gh-reviews reviews -u your-username -o your-company
+
+# Team statistics for the last week
+get-gh-reviews stats -u your-username -o your-company -d 7
+```
+
+### 📊 Different Output Formats
+
+```bash
+# Human-readable output (default)
+get-gh-reviews reviews -u your-username
+
+# JSON format (for scripts/automation)
+get-gh-reviews reviews -u your-username --json
+
+# Generate a nice Markdown report
+get-gh-reviews reviews -u your-username --markdown monthly-review-report
+```
+
+### ⚡ Pro Tips
+
+```bash
+# Only show open PRs
+get-gh-reviews reviews -u your-username -s open
+
+# Limit results (useful for quick checks)
+get-gh-reviews reviews -u your-username -l 10
+
+# Combine filters for precise results
+get-gh-reviews reviews -u your-username -o mycompany -d 7 -s open
 ```
 
 ### CLI Options
@@ -302,17 +347,49 @@ npm run build
 npm run example
 ```
 
+## Troubleshooting
+
+### ❌ "User/Organization not found" Error
+- **Check your username spelling** (case-sensitive)
+- **Verify the user exists**: Visit `https://github.com/your-username`
+- **Check token permissions**: Make sure your token has `repo` or `public_repo` scope
+
+### 🔑 Authentication Issues
+- **Token format**: Should start with `ghp_` (Personal Access Token)
+- **Token expiration**: Check if your token hasn't expired
+- **Scope permissions**: Need `repo` for private repos, `public_repo` for public repos
+
+### 📁 "No reviews found"
+- **User has no PRs**: The username might not have any pull requests
+- **Private repositories**: Need `repo` scope in your token to access private repos
+- **Time filter too restrictive**: Try removing `-d` option or increasing the days
+
+### 🌐 Network Issues
+```bash
+# Test GitHub API connectivity
+curl -H "Authorization: token YOUR_TOKEN" https://api.github.com/user
+```
+
+### 💡 Still having issues?
+1. **Verify your GitHub username**: `https://github.com/YOUR_USERNAME`
+2. **Test your token**: Try the curl command above
+3. **Check token scopes**: Go to GitHub Settings > Tokens and verify permissions
+
+### 📞 Get Help
+Open an issue at: https://github.com/yourusername/get-gh-reviews/issues
+
 ## Requirements
 
 - Node.js 14.0.0 or higher
-- GitHub Personal Access Token
-- Network access to GitHub API
+- GitHub Personal Access Token with appropriate scopes
+- Network access to GitHub API (https://api.github.com)
 
 ## Rate Limiting
 
-This tool respects GitHub's API rate limits. For authenticated requests:
-- 5,000 requests per hour for personal access tokens
-- The tool includes built-in retry logic and rate limit handling
+This tool respects GitHub's API rate limits:
+- **5,000 requests/hour** for authenticated requests
+- Built-in retry logic and rate limit handling
+- For large organizations, consider running during off-peak hours
 
 ## Contributing
 

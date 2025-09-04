@@ -1,4 +1,6 @@
 import { Octokit } from "@octokit/rest";
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   GetReviewsOptions,
   MarkdownOptions,
@@ -19,6 +21,52 @@ export class GitHubReviewsTracker {
     });
   }
 
+  // 現在のリポジトリ情報を取得
+  private getCurrentRepository(): { owner: string; repo: string } | null {
+    try {
+      // .gitディレクトリの存在確認
+      if (!fs.existsSync('.git')) {
+        return null;
+      }
+
+      // git remote get-url originの代替としてconfigファイルを読み取り
+      const gitConfigPath = path.join('.git', 'config');
+      if (!fs.existsSync(gitConfigPath)) {
+        return null;
+      }
+
+      const gitConfig = fs.readFileSync(gitConfigPath, 'utf8');
+      const remoteMatch = gitConfig.match(/\[remote "origin"\][\s\S]*?url = (.+)/);
+      
+      if (!remoteMatch) {
+        return null;
+      }
+
+      const remoteUrl = remoteMatch[1].trim();
+      
+      // GitHubのURL形式を解析
+      let match;
+      if (remoteUrl.startsWith('git@github.com:')) {
+        // SSH形式: git@github.com:owner/repo.git
+        match = remoteUrl.match(/git@github\.com:(.+)\/(.+?)(?:\.git)?$/);
+      } else if (remoteUrl.startsWith('https://github.com/')) {
+        // HTTPS形式: https://github.com/owner/repo.git
+        match = remoteUrl.match(/https:\/\/github\.com\/(.+)\/(.+?)(?:\.git)?$/);
+      }
+
+      if (match) {
+        return {
+          owner: match[1],
+          repo: match[2]
+        };
+      }
+
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
+
   async getReceivedReviews(
     username: string,
     options: GetReviewsOptions = {}
@@ -33,121 +81,53 @@ export class GitHubReviewsTracker {
 
     try {
       const reviews: Review[] = [];
-      // GitHub検索APIではなく、直接PRを取得する方法に変更
-      let pullRequests: { items: any[] };
+      let pullRequests: { items: any[] } = { items: [] };
 
-      try {
-        if (org) {
-          const { data: repos } = await this.octokit.rest.repos.listForOrg({
-            org,
+      // 現在のリポジトリ情報を取得
+      const currentRepo = this.getCurrentRepository();
+      
+      if (currentRepo) {
+        // 現在のリポジトリのPRのみを取得
+        console.log(
+          `[get-gh-reviews debug] Using current repository: ${currentRepo.owner}/${currentRepo.repo}`
+        );
+        
+        try {
+          const { data: prs } = await this.octokit.rest.pulls.list({
+            owner: currentRepo.owner,
+            repo: currentRepo.repo,
+            state: state === "all" ? "all" : (state as "open" | "closed"),
             per_page: 100,
           });
-          pullRequests = { items: [] };
-          for (const repo of repos) {
-            try {
-              const { data: prs } = await this.octokit.rest.pulls.list({
-                owner: repo.owner.login,
-                repo: repo.name,
-                state: state === "all" ? "all" : (state as "open" | "closed"),
-                per_page: 50,
-              });
-              const userPRs = prs.filter((pr) => pr.user?.login === username);
-              pullRequests.items.push(
-                ...userPRs.map((pr) => ({
-                  ...pr,
-                  repository_url: `https://api.github.com/repos/${repo.owner.login}/${repo.name}`,
-                }))
-              );
-            } catch (e) {
-              // Skip repositories we can't access
-            }
-          }
-        } else {
-          // ユーザー名でUser/Org両方を自動判定
+          
           const usernameLower = username.toLowerCase();
-          let repos;
-          let isOrg = false;
-          try {
-            // デバッグ用: usernameとtokenの一部を出力
-            const tokenDebug = this.token
-              ? this.token.slice(0, 6) + "..."
-              : "[none]";
-            console.log(
-              "[get-gh-reviews debug] listForUser username:",
-              usernameLower,
-              "token:",
-              tokenDebug
-            );
-            const res = await this.octokit.rest.repos.listForUser({
-              username: usernameLower,
-              per_page: 100,
-            });
-            repos = res.data;
-            console.log(
-              "[get-gh-reviews debug] listForUser success, repos count:",
-              repos.length
-            );
-          } catch (error: any) {
-            if (error.status === 404) {
-              // Userで404ならOrgとしても試す
-              try {
-                const resOrg = await this.octokit.rest.repos.listForOrg({
-                  org: usernameLower,
-                  per_page: 100,
-                });
-                repos = resOrg.data;
-                isOrg = true;
-              } catch (orgError: any) {
-                if (orgError.status === 404) {
-                  throw new Error(`ユーザー/組織が見つかりません: ${username}`);
-                } else if (orgError.status === 401 || orgError.status === 403) {
-                  throw new Error(
-                    `認証エラー: トークンの権限や有効期限を確認してください。`
-                  );
-                } else {
-                  throw new Error(
-                    `リポジトリ取得時にエラー: ${orgError instanceof Error ? orgError.message : "Unknown error"}`
-                  );
-                }
-              }
-            } else if (error.status === 401 || error.status === 403) {
-              throw new Error(
-                `認証エラー: トークンの権限や有効期限を確認してください。`
-              );
-            } else {
-              throw new Error(
-                `ユーザーリポジトリ取得時にエラー: ${error instanceof Error ? error.message : "Unknown error"}`
-              );
+          const userPRs = prs.filter((pr) => 
+            pr.user?.login?.toLowerCase() === usernameLower
+          );
+          
+          pullRequests.items = userPRs.map((pr) => ({
+            ...pr,
+            repository_url: `https://api.github.com/repos/${currentRepo.owner}/${currentRepo.repo}`,
+          }));
+          
+          console.log(
+            `[get-gh-reviews debug] Found ${userPRs.length} PRs by ${username} in current repository`
+          );
+        } catch (error: unknown) {
+          if (error && typeof error === 'object' && 'status' in error) {
+            const httpError = error as { status: number; message?: string };
+            if (httpError.status === 404) {
+              throw new Error(`リポジトリが見つからないか、アクセス権限がありません: ${currentRepo.owner}/${currentRepo.repo}`);
+            } else if (httpError.status === 401 || httpError.status === 403) {
+              throw new Error(`認証エラー: トークンの権限や有効期限を確認してください。`);
             }
           }
-          pullRequests = { items: [] };
-          for (const repo of repos) {
-            try {
-              const { data: prs } = await this.octokit.rest.pulls.list({
-                owner: repo.owner.login,
-                repo: repo.name,
-                state: state === "all" ? "all" : (state as "open" | "closed"),
-                per_page: 50,
-              });
-              // PR作成者のloginも小文字で比較（Orgの場合は全PR対象）
-              const userPRs = isOrg
-                ? prs // orgの場合は全PR
-                : prs.filter(
-                    (pr) => pr.user?.login?.toLowerCase() === usernameLower
-                  );
-              pullRequests.items.push(
-                ...userPRs.map((pr) => ({
-                  ...pr,
-                  repository_url: `https://api.github.com/repos/${repo.owner.login}/${repo.name}`,
-                }))
-              );
-            } catch (e) {
-              // Skip repositories we can't access
-            }
-          }
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          throw new Error(`PRの取得時にエラー: ${message}`);
         }
-      } catch (error) {
-        throw error;
+      } else {
+        // 現在のリポジトリが見つからない場合のフォールバック
+        throw new Error(`現在のディレクトリはGitリポジトリではないか、GitHubリポジトリではありません。Gitリポジトリ内で実行してください。`);
       }
 
       for (const pr of pullRequests.items) {
@@ -192,8 +172,9 @@ export class GitHubReviewsTracker {
               }
             }
           }
-        } catch (error) {
+        } catch (error: unknown) {
           // Skip PRs that can't be accessed
+          console.log(`[get-gh-reviews debug] Skipped PR ${pr.number}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
 
