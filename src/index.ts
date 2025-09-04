@@ -5,6 +5,7 @@ import {
   GetReviewsOptions,
   MarkdownOptions,
   Review,
+  ReviewComment,
   ReviewsResponse,
   ReviewState,
   ReviewStats,
@@ -146,6 +147,29 @@ export class GitHubReviewsTracker {
 
           for (const review of prReviews) {
             if (review.user?.login !== username && review.user?.login) {
+              // レビューコメント（特定の行に対するコメント）を取得
+              let reviewComments: ReviewComment[] = [];
+              try {
+                const { data: comments } = await this.octokit.rest.pulls.listReviewComments({
+                  owner,
+                  repo,
+                  pull_number: pr.number,
+                });
+                
+                // このレビューに関連するコメントのみをフィルター
+                reviewComments = comments
+                  .filter(comment => comment.pull_request_review_id === review.id)
+                  .map(comment => ({
+                    body: comment.body || "",
+                    path: comment.path,
+                    line: comment.line || comment.original_line || undefined,
+                    diff_hunk: comment.diff_hunk || undefined,
+                    url: comment.html_url || "",
+                  }));
+              } catch (error: unknown) {
+                console.log(`[get-gh-reviews debug] Could not fetch comments for review ${review.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+              }
+
               const reviewData: Review = {
                 pr_title: pr.title,
                 pr_number: pr.number,
@@ -157,6 +181,7 @@ export class GitHubReviewsTracker {
                 submitted_at: review.submitted_at || "",
                 body: review.body || "",
                 review_url: review.html_url || "",
+                comments: reviewComments.length > 0 ? reviewComments : undefined,
               };
 
               if (timeframe) {
@@ -315,14 +340,39 @@ export class GitHubReviewsTracker {
             markdown += `**日時:** ${new Date(review.submitted_at).toLocaleString("ja-JP")}\n`;
 
             if (review.body && review.body.trim()) {
-              markdown += `**コメント:**\n> ${review.body.replace(/\n/g, "\n> ")}\n`;
+              markdown += `**コメント:**\n> ${review.body.replace(/\n/g, "\n> ")}\n\n`;
+            }
+
+            // コードコメントを表示
+            if (review.comments && review.comments.length > 0) {
+              markdown += `**コードコメント:**\n\n`;
+              
+              review.comments.forEach((comment, index) => {
+                if (comment.path) {
+                  markdown += `**📁 ${comment.path}${comment.line ? `:${comment.line}` : ''}**\n\n`;
+                }
+                
+                if (comment.diff_hunk) {
+                  markdown += `\`\`\`diff\n${comment.diff_hunk}\n\`\`\`\n\n`;
+                }
+                
+                markdown += `> 💬 ${comment.body.replace(/\n/g, "\n> ")}\n\n`;
+                
+                if (comment.url) {
+                  markdown += `[🔗 コメントを表示](${comment.url})\n\n`;
+                }
+                
+                if (review.comments && index < review.comments.length - 1) {
+                  markdown += `---\n\n`;
+                }
+              });
             }
 
             if (review.review_url) {
-              markdown += `**[レビューを表示](${review.review_url})**\n`;
+              markdown += `**[📖 レビュー全体を表示](${review.review_url})**\n\n`;
             }
 
-            markdown += `\n---\n\n`;
+            markdown += `---\n\n`;
           });
       });
 

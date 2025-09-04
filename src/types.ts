@@ -1,3 +1,11 @@
+export interface ReviewComment {
+  body: string;
+  path?: string;
+  line?: number;
+  diff_hunk?: string;
+  url: string;
+}
+
 export interface Review {
   pr_title: string;
   pr_number: number;
@@ -9,6 +17,7 @@ export interface Review {
   submitted_at: string;
   body: string;
   review_url: string;
+  comments?: ReviewComment[];
 }
 
 export type ReviewState = 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED';
