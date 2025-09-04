@@ -61,11 +61,12 @@ export class GitHubReviewsTracker {
             }
           }
         } else {
-          // ユーザーのPRを直接取得
+          // ユーザーのPRを直接取得（APIはusername小文字のみ有効）
+          const usernameLower = username.toLowerCase();
           let repos;
           try {
             const res = await this.octokit.rest.repos.listForUser({
-              username,
+              username: usernameLower,
               per_page: 100,
             });
             repos = res.data;
@@ -91,7 +92,10 @@ export class GitHubReviewsTracker {
                 state: state === "all" ? "all" : (state as "open" | "closed"),
                 per_page: 50,
               });
-              const userPRs = prs.filter((pr) => pr.user?.login === username);
+              // PR作成者のloginも小文字で比較
+              const userPRs = prs.filter(
+                (pr) => pr.user?.login?.toLowerCase() === usernameLower
+              );
               pullRequests.items.push(
                 ...userPRs.map((pr) => ({
                   ...pr,
