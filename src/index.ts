@@ -318,16 +318,25 @@ export class GitHubReviewsTracker {
       prGroups[prKey].reviews.push(review);
     });
 
-    markdown += `## 📝 レビュー一覧\n\n`;
+    // 目次セクション
+    const sortedPrGroups = Object.values(prGroups).sort(
+      (a, b) =>
+        new Date(b.reviews[0].submitted_at).getTime() -
+        new Date(a.reviews[0].submitted_at).getTime()
+    );
 
-    Object.values(prGroups)
-      .sort(
-        (a, b) =>
-          new Date(b.reviews[0].submitted_at).getTime() -
-          new Date(a.reviews[0].submitted_at).getTime()
-      )
-      .forEach((prGroup) => {
-        markdown += `### [${prGroup.pr_title}](${prGroup.pr_url}) (#${prGroup.pr_number})\n\n`;
+    markdown += `## 📋 目次\n\n`;
+    sortedPrGroups.forEach((prGroup) => {
+      const anchorId = `pr-${prGroup.repository.replace('/', '-')}-${prGroup.pr_number}`;
+      markdown += `- [${prGroup.pr_title}](#${anchorId}) - **${prGroup.reviews.length}件のレビュー** (${prGroup.repository}#${prGroup.pr_number})\n`;
+    });
+    markdown += `\n`;
+
+    markdown += `## 📝 レビュー詳細\n\n`;
+
+    sortedPrGroups.forEach((prGroup) => {
+        const anchorId = `pr-${prGroup.repository.replace('/', '-')}-${prGroup.pr_number}`;
+        markdown += `### <a id="${anchorId}"></a>[${prGroup.pr_title}](${prGroup.pr_url}) (#${prGroup.pr_number})\n\n`;
         markdown += `**リポジトリ:** ${prGroup.repository}\n\n`;
 
         prGroup.reviews
