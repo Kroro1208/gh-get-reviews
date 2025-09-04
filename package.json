@@ -1,6 +1,6 @@
 {
   "name": "get-gh-reviews",
-  "version": "1.4.3",
+  "version": "1.5.0",
   "type": "module",
   "description": "Track GitHub reviews you have received on your pull requests",
   "main": "dist/index.js",

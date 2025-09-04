@@ -1,8 +1,24 @@
-# get-gh-reviews
+# 🔍 get-gh-reviews
 
-📝 Track GitHub reviews you have received on your pull requests
+[![npm version](https://badge.fury.io/js/get-gh-reviews.svg)](https://badge.fury.io/js/get-gh-reviews)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
+[![Node.js](https://img.shields.io/badge/Node.js-14.0.0+-green.svg)](https://nodejs.org/)
 
-A simple CLI tool that helps you see all the code reviews you've received across your GitHub repositories. Perfect for tracking feedback, understanding your code review patterns, and generating reports.
+> 📝 **Track GitHub reviews you received** - The missing GitHub feature!
+
+**Ever wondered who's been reviewing your code most frequently? Or what feedback patterns you're getting?** 
+
+`get-gh-reviews` is a powerful CLI tool that fills GitHub's gap by tracking all code reviews you've received across your repositories. Generate beautiful reports, discover review patterns, and level up your development workflow!
+
+## ⭐ Why use this?
+
+GitHub shows you "reviews requested" and lets you see "reviews given", but **there's no way to see all reviews you've received**. This tool solves that problem with:
+
+- 🎯 **Complete review visibility** - See ALL reviews across ALL your PRs
+- 📊 **Smart analytics** - Discover who reviews you most, review patterns, and more
+- 📝 **Beautiful reports** - Generate shareable Markdown reports with table of contents
+- 🔍 **Advanced filtering** - By time, organization, repository, and review status
+- ⚡ **Lightning fast** - Efficient GitHub API usage with smart caching
 
 ## Quick Start
 
@@ -26,15 +42,23 @@ That's it! 🎉
 
 `get-gh-reviews` addresses the GitHub feature gap where there's no consolidated view of all reviews you've received on your pull requests. See who's been reviewing your code, what feedback you're getting, and track your development patterns.
 
-## Features
+## ✨ Features
 
-- ✅ **List all reviews received** on your pull requests
-- 📊 **Statistics and insights** about your review activity
-- 🏢 **Organization filtering** for enterprise/team workflows
-- ⏱️ **Time-based filtering** (reviews from last N days)
-- 🎯 **Multiple output formats** (human-readable, JSON, and Markdown)
-- 📝 **Markdown report generation** with clickable PR links
-- 🔍 **Detailed review information** including comments and states
+| Feature | Description | Example |
+|---------|-------------|---------|
+| 🎯 **Review Tracking** | See all reviews received on your PRs | `get-gh-reviews reviews -u username` |
+| 📊 **Smart Analytics** | Who reviews you most? Which repos get most feedback? | `get-gh-reviews stats -u username` |
+| 📝 **Beautiful Reports** | Generate Markdown reports with table of contents | `--markdown monthly-report.md` |
+| 🔍 **Advanced Filtering** | Filter by time, org, repo, or review state | `-d 30 -o mycompany -s approved` |
+| 💾 **Multiple Formats** | Human-readable, JSON, or Markdown output | `--json` or `--markdown` |
+| 🏢 **Team Ready** | Perfect for organizations and team workflows | `-o your-company` |
+| 📱 **Code Context** | See actual code being reviewed with syntax highlighting | Automatic in Markdown reports |
+| ⚡ **Fast & Reliable** | Efficient API usage with smart error handling | Works with large repositories |
+
+### 🆕 Latest Features (v1.5.0)
+- **📋 Table of Contents** - Navigate large reports easily with clickable TOC
+- **🎨 Syntax Highlighting** - Code context with proper language detection
+- **🔗 Smart Linking** - Jump between TOC and detailed sections
 
 ## Installation
 
@@ -225,39 +249,53 @@ getMyStats();
 generateReport();
 ```
 
-## Markdown Report Example
+## 📋 Report Preview
 
-When using `--markdown` option, the generated report includes:
+The generated Markdown reports now include a **table of contents** for easy navigation:
 
+### Sample Report Structure
 ```markdown
-# 受け取ったレビュー レポート
+# 🔍 Received Reviews Report
 
-**生成日:** 2025/1/15
-**対象ユーザー:** your-username  
-**レビュー総数:** 15件
+**Generated:** 2025/9/4
+**User:** your-username  
+**Total Reviews:** 15 reviews
 
-## 📊 統計情報
+## 📊 Statistics
+- ✅ Approved: 8 reviews
+- 🔄 Changes Requested: 5 reviews  
+- 💬 Comments Only: 2 reviews
 
-- ✅ 承認済み: 8件
-- 🔄 変更要求: 5件  
-- 💬 コメントのみ: 2件
+## 📋 Table of Contents
+- [Fix database migration issues](#pr-myorg-myrepo-123) - **3 reviews** (myorg/myrepo#123)
+- [Update auth system](#pr-myorg-myrepo-124) - **2 reviews** (myorg/myrepo#124)
+- [Add user profiles](#pr-myorg-myrepo-125) - **3 reviews** (myorg/myrepo#125)
 
-## 📝 レビュー一覧
+## 📝 Detailed Reviews
 
-### [Add user authentication system](https://github.com/company/web-app/pull/123) (#123)
+### <a id="pr-myorg-myrepo-123"></a>[Fix database migration issues](https://github.com/myorg/myrepo/pull/123) (#123)
 
-**リポジトリ:** company/web-app
+#### 🔄 CHANGES_REQUESTED by [@senior-dev](https://github.com/senior-dev)
+**Date:** 2025/8/26 8:14:42
 
-#### ✅ APPROVED by [@senior-dev](https://github.com/senior-dev)
-
-**日時:** 2025/1/15 14:30:00
-**コメント:**
-> Great implementation! The security considerations are well thought out.
-
-**[レビューを表示](https://github.com/company/web-app/pull/123#pullrequestreview-123456)**
-
----
+**Code Comment:**
+**📁 database_schema.sql:96**
+```sql
+`id` CHAR(26) NOT NULL,
+`user_id` CHAR(26) NOT NULL,
+`title` VARCHAR(255) NOT NULL,
 ```
+> 💬 Consider adding indexes for better performance
+
+[🔗 View Comment](https://github.com/myorg/myrepo/pull/123#discussion_r123456)
+```
+
+### 🎯 Key Features of Reports:
+- **📋 Clickable Table of Contents** - Jump directly to any PR section
+- **🎨 Syntax Highlighted Code** - See actual code being reviewed  
+- **🔗 GitHub Integration** - Direct links to PRs, comments, and reviews
+- **📊 Smart Statistics** - Review counts and patterns at a glance
+- **📱 Mobile Friendly** - Beautiful formatting on any device
 
 ## API Response Format
 
@@ -315,22 +353,30 @@ When using `--markdown` option, the generated report includes:
 - `COMMENTED` 💬 - Review left comments without explicit approval
 - `DISMISSED` ❌ - Review was dismissed
 
-## Use Cases
+## 🎯 Who Should Use This?
 
-### Individual Developers
-- Track feedback patterns to improve code quality
-- Identify frequent reviewers and build better relationships
-- Monitor review response times and engagement
+### 👨‍💻 **Individual Developers**
+- **Track your growth** - See feedback patterns and improve code quality
+- **Build relationships** - Identify who reviews you most and engage better  
+- **Career development** - Document review history for performance reviews
+- **Learning insights** - Understand what areas you get most feedback on
 
-### Team Leaders
-- Analyze review distribution across team members
-- Identify knowledge sharing opportunities
-- Monitor review quality and engagement
+### 👩‍💼 **Team Leaders & Engineering Managers**
+- **Team insights** - Analyze review distribution across team members
+- **Process improvement** - Identify review bottlenecks and patterns
+- **Knowledge sharing** - Find opportunities for mentoring and learning
+- **Performance tracking** - Quantify collaboration and feedback quality
 
-### Organizations
-- Track review activity across repositories
-- Identify review bottlenecks and patterns
-- Generate reports for development process improvement
+### 🏢 **Organizations & Enterprises**  
+- **Engineering metrics** - Track review activity across all repositories
+- **Workflow optimization** - Identify and eliminate review process bottlenecks
+- **Quality assurance** - Monitor review coverage and engagement levels
+- **Team health** - Ensure balanced review distribution and prevent burnout
+
+### 🎓 **Open Source Maintainers**
+- **Community engagement** - Track contributor feedback and involvement
+- **Project health** - Monitor review activity across all contributions
+- **Recognition** - Identify top reviewers for community acknowledgment
 
 ## Development
 
@@ -391,22 +437,52 @@ This tool respects GitHub's API rate limits:
 - Built-in retry logic and rate limit handling
 - For large organizations, consider running during off-peak hours
 
-## Contributing
+## 🚀 Roadmap & Future Features
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+- [ ] **🔔 Review notifications** - Get notified when you receive new reviews
+- [ ] **📈 Trend analysis** - Track review patterns over time with charts
+- [ ] **🎨 Custom themes** - Personalize your Markdown reports
+- [ ] **🤖 AI insights** - Smart analysis of feedback patterns
+- [ ] **📧 Email reports** - Automated weekly/monthly review summaries
+- [ ] **🔄 CI/CD integration** - Automate report generation in workflows
 
-## Issues and Feature Requests
+## 🤝 Contributing
 
-Found a bug or have a feature request? Please open an issue on the [GitHub repository](https://github.com/yourusername/get-gh-reviews/issues).
+We love contributions! Here's how you can help:
 
-## License
+1. **🐛 Report bugs** - Found an issue? [Open a bug report](https://github.com/Kroro1208/gh-get-reviews/issues)
+2. **💡 Feature requests** - Have an idea? [Suggest a feature](https://github.com/Kroro1208/gh-get-reviews/issues)
+3. **🔨 Code contributions**:
+   - Fork the repository
+   - Create a feature branch (`git checkout -b feature/amazing-feature`)
+   - Commit your changes (`git commit -m 'Add amazing feature'`)
+   - Push to the branch (`git push origin feature/amazing-feature`)
+   - Open a Pull Request
 
-ISC License - see the [LICENSE](LICENSE) file for details.
+### 🙏 Contributors
+Special thanks to everyone who has contributed to making this tool better!
 
-## Related
+## 📝 License
 
-This package addresses the GitHub feature request for tracking reviews received, which is currently not available in the GitHub web interface. It complements existing features like "Reviews requested" and "Reviews given".
+[ISC License](https://opensource.org/licenses/ISC) - see the [LICENSE](LICENSE) file for details.
+
+## 📞 Support & Community
+
+- **🐛 Issues**: [GitHub Issues](https://github.com/Kroro1208/gh-get-reviews/issues)
+- **💬 Discussions**: [GitHub Discussions](https://github.com/Kroro1208/gh-get-reviews/discussions)  
+- **📧 Email**: For enterprise support inquiries
+
+## 🌟 Show Your Support
+
+If this tool helped you track your reviews and improve your workflow:
+
+- ⭐ **Star this repository**
+- 🐦 **Share on Twitter/LinkedIn**  
+- 📝 **Write a blog post** about your experience
+- 🤝 **Contribute** code, documentation, or ideas
+
+---
+
+**Made with ❤️ for the developer community**
+
+*This tool addresses the missing GitHub feature of tracking reviews received - helping developers worldwide understand their code review patterns and build better relationships with their teams.*
