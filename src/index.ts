@@ -92,7 +92,7 @@ export class GitHubReviewsTracker {
               // Userで404ならOrgとしても試す
               try {
                 const resOrg = await this.octokit.rest.repos.listForOrg({
-                  org: username,
+                  org: usernameLower,
                   per_page: 100,
                 });
                 repos = resOrg.data;
