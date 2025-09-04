@@ -10,8 +10,10 @@ import {
 
 export class GitHubReviewsTracker {
   private octokit: Octokit;
+  private token: string;
 
   constructor(token: string) {
+    this.token = token;
     this.octokit = new Octokit({
       auth: token,
     });
@@ -61,18 +63,53 @@ export class GitHubReviewsTracker {
             }
           }
         } else {
-          // ユーザーのPRを直接取得（APIはusername小文字のみ有効）
+          // ユーザー名でUser/Org両方を自動判定
           const usernameLower = username.toLowerCase();
           let repos;
+          let isOrg = false;
           try {
+            // デバッグ用: usernameとtokenの一部を出力
+            const tokenDebug = this.token
+              ? this.token.slice(0, 6) + "..."
+              : "[none]";
+            console.log(
+              "[get-gh-reviews debug] listForUser username:",
+              usernameLower,
+              "token:",
+              tokenDebug
+            );
             const res = await this.octokit.rest.repos.listForUser({
               username: usernameLower,
               per_page: 100,
             });
             repos = res.data;
+            console.log(
+              "[get-gh-reviews debug] listForUser success, repos count:",
+              repos.length
+            );
           } catch (error: any) {
             if (error.status === 404) {
-              throw new Error(`ユーザーが見つかりません: ${username}`);
+              // Userで404ならOrgとしても試す
+              try {
+                const resOrg = await this.octokit.rest.repos.listForOrg({
+                  org: username,
+                  per_page: 100,
+                });
+                repos = resOrg.data;
+                isOrg = true;
+              } catch (orgError: any) {
+                if (orgError.status === 404) {
+                  throw new Error(`ユーザー/組織が見つかりません: ${username}`);
+                } else if (orgError.status === 401 || orgError.status === 403) {
+                  throw new Error(
+                    `認証エラー: トークンの権限や有効期限を確認してください。`
+                  );
+                } else {
+                  throw new Error(
+                    `リポジトリ取得時にエラー: ${orgError instanceof Error ? orgError.message : "Unknown error"}`
+                  );
+                }
+              }
             } else if (error.status === 401 || error.status === 403) {
               throw new Error(
                 `認証エラー: トークンの権限や有効期限を確認してください。`
@@ -92,10 +129,12 @@ export class GitHubReviewsTracker {
                 state: state === "all" ? "all" : (state as "open" | "closed"),
                 per_page: 50,
               });
-              // PR作成者のloginも小文字で比較
-              const userPRs = prs.filter(
-                (pr) => pr.user?.login?.toLowerCase() === usernameLower
-              );
+              // PR作成者のloginも小文字で比較（Orgの場合は全PR対象）
+              const userPRs = isOrg
+                ? prs // orgの場合は全PR
+                : prs.filter(
+                    (pr) => pr.user?.login?.toLowerCase() === usernameLower
+                  );
               pullRequests.items.push(
                 ...userPRs.map((pr) => ({
                   ...pr,
