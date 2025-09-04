@@ -156,6 +156,8 @@ export class GitHubReviewsTracker {
                   pull_number: pr.number,
                 });
                 
+                console.log(`[get-gh-reviews debug] PR #${pr.number} review ${review.id}: found ${comments.length} total comments`);
+                
                 // このレビューに関連するコメントのみをフィルター
                 reviewComments = comments
                   .filter(comment => comment.pull_request_review_id === review.id)
@@ -166,6 +168,12 @@ export class GitHubReviewsTracker {
                     diff_hunk: comment.diff_hunk || undefined,
                     url: comment.html_url || "",
                   }));
+                
+                console.log(`[get-gh-reviews debug] PR #${pr.number} review ${review.id}: filtered to ${reviewComments.length} comments for this review`);
+                
+                // デバッグ：レビュー全体のbodyも確認
+                console.log(`[get-gh-reviews debug] PR #${pr.number} review ${review.id}: review body length = ${(review.body || "").length}, state = ${review.state}`);
+                
               } catch (error: unknown) {
                 console.log(`[get-gh-reviews debug] Could not fetch comments for review ${review.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
               }
@@ -337,10 +345,13 @@ export class GitHubReviewsTracker {
             };
 
             markdown += `#### ${stateEmoji[review.state] || "❓"} ${review.state} by [@${review.reviewer}](https://github.com/${review.reviewer})\n\n`;
-            markdown += `**日時:** ${new Date(review.submitted_at).toLocaleString("ja-JP")}\n`;
+            markdown += `**日時:** ${new Date(review.submitted_at).toLocaleString("ja-JP")}\n\n`;
 
+            // レビュー全体のコメントを表示（空でも表示）
             if (review.body && review.body.trim()) {
-              markdown += `**コメント:**\n> ${review.body.replace(/\n/g, "\n> ")}\n\n`;
+              markdown += `**全体コメント:**\n> ${review.body.replace(/\n/g, "\n> ")}\n\n`;
+            } else {
+              markdown += `**全体コメント:** _（コメントなし）_\n\n`;
             }
 
             // コードコメントを表示
