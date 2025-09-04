@@ -93,9 +93,6 @@ export class GitHubReviewsTracker {
 
       if (currentRepo) {
         // 現在のリポジトリのPRのみを取得
-        console.log(
-          `[get-gh-reviews debug] Using current repository: ${currentRepo.owner}/${currentRepo.repo}`
-        );
 
         try {
           const { data: prs } = await this.octokit.rest.pulls.list({
@@ -115,9 +112,6 @@ export class GitHubReviewsTracker {
             repository_url: `https://api.github.com/repos/${currentRepo.owner}/${currentRepo.repo}`,
           }));
 
-          console.log(
-            `[get-gh-reviews debug] Found ${userPRs.length} PRs by ${username} in current repository`
-          );
         } catch (error: unknown) {
           if (error && typeof error === "object" && "status" in error) {
             const httpError = error as { status: number; message?: string };
@@ -181,9 +175,7 @@ export class GitHubReviewsTracker {
                     url: comment.html_url || "",
                   }));
               } catch (error: unknown) {
-                console.log(
-                  `[get-gh-reviews debug] Could not fetch comments for review ${review.id}: ${error instanceof Error ? error.message : "Unknown error"}`
-                );
+                // Skip if comments cannot be fetched
               }
 
               const reviewData: Review = {
@@ -216,9 +208,6 @@ export class GitHubReviewsTracker {
           }
         } catch (error: unknown) {
           // Skip PRs that can't be accessed
-          console.log(
-            `[get-gh-reviews debug] Skipped PR ${pr.number}: ${error instanceof Error ? error.message : "Unknown error"}`
-          );
         }
       }
 
@@ -372,13 +361,9 @@ export class GitHubReviewsTracker {
                 }
 
                 if (comment.diff_hunk) {
-                  console.log(`[get-gh-reviews debug] diff_hunk for ${comment.path}:${comment.line} - length: ${comment.diff_hunk.length}`);
-                  
-                  // diff_hunkから関連する部分のみを抽出（前後5行程度）
+                  // diff_hunkから関連する部分のみを抽出
                   const lines = comment.diff_hunk.split('\n');
                   const targetLine = comment.line;
-                  let relevantLines: string[] = [];
-                  let foundTargetArea = false;
                   
                   // ファイル拡張子から言語を推測
                   let language = 'text';
@@ -432,8 +417,6 @@ export class GitHubReviewsTracker {
                     // 小さなdiffの場合はそのまま表示
                     markdown += `\`\`\`diff\n${comment.diff_hunk}\n\`\`\`\n\n`;
                   }
-                } else {
-                  console.log(`[get-gh-reviews debug] No diff_hunk for ${comment.path}:${comment.line}`);
                 }
 
                 markdown += `> 💬 ${comment.body.replace(/\n/g, "\n> ")}\n\n`;
