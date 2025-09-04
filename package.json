@@ -33,12 +33,12 @@
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/get-gh-reviews.git"
+    "url": "https://github.com/Kroro1208/gh-get-reviews"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/get-gh-reviews/issues"
+    "url": "https://github.com/Kroro1208/gh-get-reviews/issues"
   },
-  "homepage": "https://github.com/yourusername/get-gh-reviews#readme",
+  "homepage": "https://github.com/Kroro1208/gh-get-reviews#readme",
   "dependencies": {
     "@octokit/rest": "^22.0.0",
     "commander": "^14.0.0",
