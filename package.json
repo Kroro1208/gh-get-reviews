@@ -1,23 +1,25 @@
 {
   "name": "get-gh-reviews",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "type": "module",
   "description": "Track GitHub reviews you have received on your pull requests",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "get-gh-reviews": "./dist/cli.js"
+    "get-gh-reviews": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build",
+    "postinstall": "node scripts/postinstall.js",
     "dev": "ts-node src/cli.ts",
     "example": "ts-node src/example.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "files": [
     "dist/**/*",
+    "scripts/**/*",
     "README.md"
   ],
   "keywords": [
@@ -33,7 +35,7 @@
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/get-gh-reviews.git"
+    "url": "git+https://github.com/yourusername/get-gh-reviews.git"
   },
   "bugs": {
     "url": "https://github.com/yourusername/get-gh-reviews/issues"

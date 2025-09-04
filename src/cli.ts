@@ -1,17 +1,58 @@
 #!/usr/bin/env node
 
-import 'dotenv/config';
+import { config } from 'dotenv';
 import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import { GitHubReviewsTracker } from './index.js';
+
+// Setup configuration file
+function setupConfigFile() {
+  const homeEnvPath = path.join(os.homedir(), '.get-gh-reviews.env');
+  
+  if (!fs.existsSync(homeEnvPath)) {
+    const envTemplate = `# GitHub Personal Access Token
+# Get your token at: https://github.com/settings/tokens
+# Required scopes: repo (for private repos) or public_repo (for public repos)
+GITHUB_TOKEN=your_token_here
+
+# Uncomment and set if you want to use a specific organization by default
+# GITHUB_DEFAULT_ORG=your-org-name
+`;
+    
+    try {
+      fs.writeFileSync(homeEnvPath, envTemplate, 'utf8');
+      console.log('🎉 Welcome to get-gh-reviews!');
+      console.log('');
+      console.log('✅ Created configuration file at:', homeEnvPath);
+      console.log('');
+      console.log('🚀 Quick setup:');
+      console.log('1. Get your GitHub token: https://github.com/settings/tokens');
+      console.log('2. Edit the config file and replace "your_token_here" with your actual token');
+      console.log('3. Run your command again!');
+      console.log('');
+      console.log('💡 Edit config: nano ~/.get-gh-reviews.env');
+      console.log('');
+    } catch (error) {
+      // Silent fail - user can still use --token option
+    }
+  }
+}
+
+// Setup config on first run
+setupConfigFile();
+
+// Load .env from multiple locations
+config(); // Current directory
+config({ path: path.join(os.homedir(), '.get-gh-reviews.env') }); // Home directory
 
 const program = new Command();
 
 program
   .name('get-gh-reviews')
   .description('Track GitHub reviews you have received on your pull requests')
-  .version('1.0.0');
+  .version('1.2.0');
 
 interface ReviewsOptions {
   username: string;
@@ -49,7 +90,15 @@ program
     const token = options.token || process.env.GITHUB_TOKEN;
     
     if (!token) {
-      console.error('❌ GitHub token is required. Set GITHUB_TOKEN environment variable or use --token option');
+      const homeEnvPath = path.join(os.homedir(), '.get-gh-reviews.env');
+      console.error('❌ GitHub token is required!');
+      console.error('');
+      console.error('🔧 Setup instructions:');
+      console.error('1. Get your token: https://github.com/settings/tokens');
+      console.error(`2. Edit: ${homeEnvPath}`);
+      console.error('3. Replace "your_token_here" with your actual token');
+      console.error('');
+      console.error('💡 Or use --token option: get-gh-reviews reviews -u username -t your_token');
       process.exit(1);
     }
 
@@ -120,7 +169,15 @@ program
     const token = options.token || process.env.GITHUB_TOKEN;
     
     if (!token) {
-      console.error('❌ GitHub token is required. Set GITHUB_TOKEN environment variable or use --token option');
+      const homeEnvPath = path.join(os.homedir(), '.get-gh-reviews.env');
+      console.error('❌ GitHub token is required!');
+      console.error('');
+      console.error('🔧 Setup instructions:');
+      console.error('1. Get your token: https://github.com/settings/tokens');
+      console.error(`2. Edit: ${homeEnvPath}`);
+      console.error('3. Replace "your_token_here" with your actual token');
+      console.error('');
+      console.error('💡 Or use --token option: get-gh-reviews reviews -u username -t your_token');
       process.exit(1);
     }
 
