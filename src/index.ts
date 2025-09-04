@@ -1,6 +1,6 @@
 import { Octokit } from "@octokit/rest";
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 import {
   GetReviewsOptions,
   MarkdownOptions,
@@ -26,39 +26,43 @@ export class GitHubReviewsTracker {
   private getCurrentRepository(): { owner: string; repo: string } | null {
     try {
       // .gitディレクトリの存在確認
-      if (!fs.existsSync('.git')) {
+      if (!fs.existsSync(".git")) {
         return null;
       }
 
       // git remote get-url originの代替としてconfigファイルを読み取り
-      const gitConfigPath = path.join('.git', 'config');
+      const gitConfigPath = path.join(".git", "config");
       if (!fs.existsSync(gitConfigPath)) {
         return null;
       }
 
-      const gitConfig = fs.readFileSync(gitConfigPath, 'utf8');
-      const remoteMatch = gitConfig.match(/\[remote "origin"\][\s\S]*?url = (.+)/);
-      
+      const gitConfig = fs.readFileSync(gitConfigPath, "utf8");
+      const remoteMatch = gitConfig.match(
+        /\[remote "origin"\][\s\S]*?url = (.+)/
+      );
+
       if (!remoteMatch) {
         return null;
       }
 
       const remoteUrl = remoteMatch[1].trim();
-      
+
       // GitHubのURL形式を解析
       let match;
-      if (remoteUrl.startsWith('git@github.com:')) {
+      if (remoteUrl.startsWith("git@github.com:")) {
         // SSH形式: git@github.com:owner/repo.git
         match = remoteUrl.match(/git@github\.com:(.+)\/(.+?)(?:\.git)?$/);
-      } else if (remoteUrl.startsWith('https://github.com/')) {
+      } else if (remoteUrl.startsWith("https://github.com/")) {
         // HTTPS形式: https://github.com/owner/repo.git
-        match = remoteUrl.match(/https:\/\/github\.com\/(.+)\/(.+?)(?:\.git)?$/);
+        match = remoteUrl.match(
+          /https:\/\/github\.com\/(.+)\/(.+?)(?:\.git)?$/
+        );
       }
 
       if (match) {
         return {
           owner: match[1],
-          repo: match[2]
+          repo: match[2],
         };
       }
 
@@ -86,13 +90,13 @@ export class GitHubReviewsTracker {
 
       // 現在のリポジトリ情報を取得
       const currentRepo = this.getCurrentRepository();
-      
+
       if (currentRepo) {
         // 現在のリポジトリのPRのみを取得
         console.log(
           `[get-gh-reviews debug] Using current repository: ${currentRepo.owner}/${currentRepo.repo}`
         );
-        
+
         try {
           const { data: prs } = await this.octokit.rest.pulls.list({
             owner: currentRepo.owner,
@@ -100,35 +104,42 @@ export class GitHubReviewsTracker {
             state: state === "all" ? "all" : (state as "open" | "closed"),
             per_page: 100,
           });
-          
+
           const usernameLower = username.toLowerCase();
-          const userPRs = prs.filter((pr) => 
-            pr.user?.login?.toLowerCase() === usernameLower
+          const userPRs = prs.filter(
+            (pr) => pr.user?.login?.toLowerCase() === usernameLower
           );
-          
+
           pullRequests.items = userPRs.map((pr) => ({
             ...pr,
             repository_url: `https://api.github.com/repos/${currentRepo.owner}/${currentRepo.repo}`,
           }));
-          
+
           console.log(
             `[get-gh-reviews debug] Found ${userPRs.length} PRs by ${username} in current repository`
           );
         } catch (error: unknown) {
-          if (error && typeof error === 'object' && 'status' in error) {
+          if (error && typeof error === "object" && "status" in error) {
             const httpError = error as { status: number; message?: string };
             if (httpError.status === 404) {
-              throw new Error(`リポジトリが見つからないか、アクセス権限がありません: ${currentRepo.owner}/${currentRepo.repo}`);
+              throw new Error(
+                `リポジトリが見つからないか、アクセス権限がありません: ${currentRepo.owner}/${currentRepo.repo}`
+              );
             } else if (httpError.status === 401 || httpError.status === 403) {
-              throw new Error(`認証エラー: トークンの権限や有効期限を確認してください。`);
+              throw new Error(
+                `認証エラー: トークンの権限や有効期限を確認してください。`
+              );
             }
           }
-          const message = error instanceof Error ? error.message : 'Unknown error';
+          const message =
+            error instanceof Error ? error.message : "Unknown error";
           throw new Error(`PRの取得時にエラー: ${message}`);
         }
       } else {
         // 現在のリポジトリが見つからない場合のフォールバック
-        throw new Error(`現在のディレクトリはGitリポジトリではないか、GitHubリポジトリではありません。Gitリポジトリ内で実行してください。`);
+        throw new Error(
+          `現在のディレクトリはGitリポジトリではないか、GitHubリポジトリではありません。Gitリポジトリ内で実行してください。`
+        );
       }
 
       for (const pr of pullRequests.items) {
@@ -150,39 +161,29 @@ export class GitHubReviewsTracker {
               // レビューコメント（特定の行に対するコメント）を取得
               let reviewComments: ReviewComment[] = [];
               try {
-                const { data: comments } = await this.octokit.rest.pulls.listReviewComments({
-                  owner,
-                  repo,
-                  pull_number: pr.number,
-                });
-                
-                console.log(`[get-gh-reviews debug] PR #${pr.number} review ${review.id}: found ${comments.length} total comments`);
-                
+                const { data: comments } =
+                  await this.octokit.rest.pulls.listReviewComments({
+                    owner,
+                    repo,
+                    pull_number: pr.number,
+                  });
+
                 // このレビューに関連するコメントのみをフィルター
                 reviewComments = comments
-                  .filter(comment => comment.pull_request_review_id === review.id)
-                  .map(comment => ({
+                  .filter(
+                    (comment) => comment.pull_request_review_id === review.id
+                  )
+                  .map((comment) => ({
                     body: comment.body || "",
                     path: comment.path,
                     line: comment.line || comment.original_line || undefined,
                     diff_hunk: comment.diff_hunk || undefined,
                     url: comment.html_url || "",
                   }));
-                
-                console.log(`[get-gh-reviews debug] PR #${pr.number} review ${review.id}: filtered to ${reviewComments.length} comments for this review`);
-                
-                // デバッグ：レビュー全体のbodyも確認
-                console.log(`[get-gh-reviews debug] PR #${pr.number} review ${review.id}: review body length = ${(review.body || "").length}, state = ${review.state}`);
-                
-                // デバッグ：コメントの詳細を出力
-                if (reviewComments.length > 0) {
-                  reviewComments.forEach((comment, idx) => {
-                    console.log(`[get-gh-reviews debug] Comment ${idx + 1}: body="${comment.body.substring(0, 50)}..." path="${comment.path}" line=${comment.line} diff_hunk_length=${comment.diff_hunk?.length || 0}`);
-                  });
-                }
-                
               } catch (error: unknown) {
-                console.log(`[get-gh-reviews debug] Could not fetch comments for review ${review.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                console.log(
+                  `[get-gh-reviews debug] Could not fetch comments for review ${review.id}: ${error instanceof Error ? error.message : "Unknown error"}`
+                );
               }
 
               const reviewData: Review = {
@@ -196,7 +197,8 @@ export class GitHubReviewsTracker {
                 submitted_at: review.submitted_at || "",
                 body: review.body || "",
                 review_url: review.html_url || "",
-                comments: reviewComments.length > 0 ? reviewComments : undefined,
+                comments:
+                  reviewComments.length > 0 ? reviewComments : undefined,
               };
 
               if (timeframe) {
@@ -214,7 +216,9 @@ export class GitHubReviewsTracker {
           }
         } catch (error: unknown) {
           // Skip PRs that can't be accessed
-          console.log(`[get-gh-reviews debug] Skipped PR ${pr.number}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          console.log(
+            `[get-gh-reviews debug] Skipped PR ${pr.number}: ${error instanceof Error ? error.message : "Unknown error"}`
+          );
         }
       }
 
@@ -352,97 +356,41 @@ export class GitHubReviewsTracker {
             };
 
             markdown += `#### ${stateEmoji[review.state] || "❓"} ${review.state} by [@${review.reviewer}](https://github.com/${review.reviewer})\n\n`;
-            markdown += `**日時:** ${new Date(review.submitted_at).toLocaleString("ja-JP")}\n\n`;
+            markdown += `**日時:** ${new Date(review.submitted_at).toLocaleString("ja-JP")}\n`;
 
-            // レビュー全体のコメントを表示（空でも表示）
             if (review.body && review.body.trim()) {
-              markdown += `**全体コメント:**\n> ${review.body.replace(/\n/g, "\n> ")}\n\n`;
-            } else {
-              markdown += `**全体コメント:** _（コメントなし）_\n\n`;
+              markdown += `**コメント:**\n> ${review.body.replace(/\n/g, "\n> ")}\n\n`;
             }
 
             // コードコメントを表示
             if (review.comments && review.comments.length > 0) {
-              console.log(`[get-gh-reviews debug] Generating markdown for ${review.comments.length} comments`);
               markdown += `**コードコメント:**\n\n`;
-              
+
               review.comments.forEach((comment, index) => {
                 if (comment.path) {
-                  markdown += `**📁 ${comment.path}${comment.line ? `:${comment.line}行目` : ''}**\n\n`;
+                  markdown += `**📁 ${comment.path}${comment.line ? `:${comment.line}` : ""}**\n\n`;
                 }
-                
+
                 if (comment.diff_hunk) {
-                  // diff_hunkを解析してより読みやすい形式で表示
-                  const lines = comment.diff_hunk.split('\n');
-                  let codeContent = '';
-                  let language = '';
-                  
-                  // ファイル拡張子から言語を推測
-                  if (comment.path) {
-                    const ext = comment.path.split('.').pop()?.toLowerCase();
-                    switch (ext) {
-                      case 'js':
-                      case 'jsx':
-                        language = 'javascript';
-                        break;
-                      case 'ts':
-                      case 'tsx':
-                        language = 'typescript';
-                        break;
-                      case 'go':
-                        language = 'go';
-                        break;
-                      case 'py':
-                        language = 'python';
-                        break;
-                      case 'java':
-                        language = 'java';
-                        break;
-                      case 'sql':
-                        language = 'sql';
-                        break;
-                      case 'json':
-                        language = 'json';
-                        break;
-                      case 'yml':
-                      case 'yaml':
-                        language = 'yaml';
-                        break;
-                      default:
-                        language = 'text';
-                    }
-                  }
-                  
-                  // コードの行を抽出（+や-を除いて実際のコード内容のみ）
-                  const codeLines = lines.filter(line => 
-                    line.startsWith('+') || line.startsWith('-') || line.startsWith(' ')
-                  ).map(line => {
-                    // +, -, スペースを除いてコード内容のみを取得
-                    if (line.startsWith('+') || line.startsWith('-') || line.startsWith(' ')) {
-                      return line.substring(1);
-                    }
-                    return line;
-                  });
-                  
-                  if (codeLines.length > 0) {
-                    codeContent = codeLines.join('\n');
-                    markdown += `\`\`\`${language}\n${codeContent}\n\`\`\`\n\n`;
-                  } else {
-                    // フォールバック：元のdiff表示
-                    markdown += `\`\`\`diff\n${comment.diff_hunk}\n\`\`\`\n\n`;
-                  }
+                  console.log(`[get-gh-reviews debug] diff_hunk for ${comment.path}:${comment.line} - length: ${comment.diff_hunk.length}`);
+                  console.log(`[get-gh-reviews debug] diff_hunk content: "${comment.diff_hunk}"`);
+                  markdown += `\`\`\`diff\n${comment.diff_hunk}\n\`\`\`\n\n`;
+                } else {
+                  console.log(`[get-gh-reviews debug] No diff_hunk for ${comment.path}:${comment.line}`);
                 }
-                
-                markdown += `> 💬 **${review.reviewer}**: ${comment.body.replace(/\n/g, "\n> ")}\n\n`;
-                
+
+                markdown += `> 💬 ${comment.body.replace(/\n/g, "\n> ")}\n\n`;
+
                 if (comment.url) {
                   markdown += `[🔗 コメントを表示](${comment.url})\n\n`;
                 }
-                
+
                 if (review.comments && index < review.comments.length - 1) {
                   markdown += `---\n\n`;
                 }
               });
+            } else {
+              markdown += `_（コードコメントなし）_\n\n`;
             }
 
             if (review.review_url) {
