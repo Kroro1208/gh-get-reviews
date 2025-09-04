@@ -360,14 +360,72 @@ export class GitHubReviewsTracker {
               
               review.comments.forEach((comment, index) => {
                 if (comment.path) {
-                  markdown += `**📁 ${comment.path}${comment.line ? `:${comment.line}` : ''}**\n\n`;
+                  markdown += `**📁 ${comment.path}${comment.line ? `:${comment.line}行目` : ''}**\n\n`;
                 }
                 
                 if (comment.diff_hunk) {
-                  markdown += `\`\`\`diff\n${comment.diff_hunk}\n\`\`\`\n\n`;
+                  // diff_hunkを解析してより読みやすい形式で表示
+                  const lines = comment.diff_hunk.split('\n');
+                  let codeContent = '';
+                  let language = '';
+                  
+                  // ファイル拡張子から言語を推測
+                  if (comment.path) {
+                    const ext = comment.path.split('.').pop()?.toLowerCase();
+                    switch (ext) {
+                      case 'js':
+                      case 'jsx':
+                        language = 'javascript';
+                        break;
+                      case 'ts':
+                      case 'tsx':
+                        language = 'typescript';
+                        break;
+                      case 'go':
+                        language = 'go';
+                        break;
+                      case 'py':
+                        language = 'python';
+                        break;
+                      case 'java':
+                        language = 'java';
+                        break;
+                      case 'sql':
+                        language = 'sql';
+                        break;
+                      case 'json':
+                        language = 'json';
+                        break;
+                      case 'yml':
+                      case 'yaml':
+                        language = 'yaml';
+                        break;
+                      default:
+                        language = 'text';
+                    }
+                  }
+                  
+                  // コードの行を抽出（+や-を除いて実際のコード内容のみ）
+                  const codeLines = lines.filter(line => 
+                    line.startsWith('+') || line.startsWith('-') || line.startsWith(' ')
+                  ).map(line => {
+                    // +, -, スペースを除いてコード内容のみを取得
+                    if (line.startsWith('+') || line.startsWith('-') || line.startsWith(' ')) {
+                      return line.substring(1);
+                    }
+                    return line;
+                  });
+                  
+                  if (codeLines.length > 0) {
+                    codeContent = codeLines.join('\n');
+                    markdown += `\`\`\`${language}\n${codeContent}\n\`\`\`\n\n`;
+                  } else {
+                    // フォールバック：元のdiff表示
+                    markdown += `\`\`\`diff\n${comment.diff_hunk}\n\`\`\`\n\n`;
+                  }
                 }
                 
-                markdown += `> 💬 ${comment.body.replace(/\n/g, "\n> ")}\n\n`;
+                markdown += `> 💬 **${review.reviewer}**: ${comment.body.replace(/\n/g, "\n> ")}\n\n`;
                 
                 if (comment.url) {
                   markdown += `[🔗 コメントを表示](${comment.url})\n\n`;
