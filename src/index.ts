@@ -373,8 +373,65 @@ export class GitHubReviewsTracker {
 
                 if (comment.diff_hunk) {
                   console.log(`[get-gh-reviews debug] diff_hunk for ${comment.path}:${comment.line} - length: ${comment.diff_hunk.length}`);
-                  console.log(`[get-gh-reviews debug] diff_hunk content: "${comment.diff_hunk}"`);
-                  markdown += `\`\`\`diff\n${comment.diff_hunk}\n\`\`\`\n\n`;
+                  
+                  // diff_hunkから関連する部分のみを抽出（前後5行程度）
+                  const lines = comment.diff_hunk.split('\n');
+                  const targetLine = comment.line;
+                  let relevantLines: string[] = [];
+                  let foundTargetArea = false;
+                  
+                  // ファイル拡張子から言語を推測
+                  let language = 'text';
+                  if (comment.path) {
+                    const ext = comment.path.split('.').pop()?.toLowerCase();
+                    switch (ext) {
+                      case 'js': case 'jsx': language = 'javascript'; break;
+                      case 'ts': case 'tsx': language = 'typescript'; break;
+                      case 'go': language = 'go'; break;
+                      case 'py': language = 'python'; break;
+                      case 'java': language = 'java'; break;
+                      case 'sql': language = 'sql'; break;
+                      case 'json': language = 'json'; break;
+                      case 'yml': case 'yaml': language = 'yaml'; break;
+                      case 'html': language = 'html'; break;
+                      case 'css': language = 'css'; break;
+                    }
+                  }
+                  
+                  // 大きなdiffの場合は、コメント行周辺のコンテキストを抽出
+                  if (lines.length > 50) {
+                    // コメント対象行の周辺（前後10行程度）を抽出
+                    let contextLines: string[] = [];
+                    let lineNumber = 1;
+                    
+                    for (const line of lines) {
+                      if (line.startsWith('@@')) continue;
+                      
+                      if (line.startsWith('+')) {
+                        if (targetLine && Math.abs(lineNumber - targetLine) <= 10) {
+                          contextLines.push(line.substring(1)); // +を除去
+                        }
+                        lineNumber++;
+                      } else if (line.startsWith(' ')) {
+                        if (targetLine && Math.abs(lineNumber - targetLine) <= 10) {
+                          contextLines.push(line.substring(1)); // スペースを除去
+                        }
+                        lineNumber++;
+                      }
+                    }
+                    
+                    if (contextLines.length > 0) {
+                      const codeContent = contextLines.join('\n');
+                      markdown += `\`\`\`${language}\n${codeContent}\n\`\`\`\n\n`;
+                    } else {
+                      // フォールバック: 最初の20行程度を表示
+                      const shortDiff = lines.slice(0, 25).join('\n');
+                      markdown += `\`\`\`diff\n${shortDiff}\n...\n\`\`\`\n\n`;
+                    }
+                  } else {
+                    // 小さなdiffの場合はそのまま表示
+                    markdown += `\`\`\`diff\n${comment.diff_hunk}\n\`\`\`\n\n`;
+                  }
                 } else {
                   console.log(`[get-gh-reviews debug] No diff_hunk for ${comment.path}:${comment.line}`);
                 }
