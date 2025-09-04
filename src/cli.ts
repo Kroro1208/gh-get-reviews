@@ -52,7 +52,7 @@ const program = new Command();
 program
   .name('get-gh-reviews')
   .description('Track GitHub reviews you have received on your pull requests')
-  .version('1.2.1');
+  .version('1.2.4');
 
 interface ReviewsOptions {
   username: string;
@@ -72,6 +72,7 @@ interface StatsOptions {
   org?: string;
   days?: string;
   json?: boolean;
+  markdown?: string;
 }
 
 program
@@ -152,8 +153,36 @@ program
         });
       }
     } catch (error) {
+      // エラーが発生してもMarkdownファイル作成を試行
+      if (options.markdown) {
+        const errorMarkdown = `# ${options.username}さんが受け取ったレビュー レポート
+
+**生成日:** ${new Date().toLocaleDateString('ja-JP')}
+**対象ユーザー:** ${options.username}
+
+## ❌ エラー
+
+データの取得中にエラーが発生しました:
+${error instanceof Error ? error.message : 'Unknown error'}
+
+## 💡 解決方法
+
+1. GitHubユーザー名が正しいか確認してください
+2. GitHubトークンの権限を確認してください
+3. ユーザーが存在し、検索可能な設定になっているか確認してください
+`;
+        
+        const filename = options.markdown.endsWith('.md') ? options.markdown : `${options.markdown}.md`;
+        const fullPath = path.resolve(filename);
+        
+        fs.writeFileSync(fullPath, errorMarkdown, 'utf8');
+        console.log(`✅ エラーレポートを生成しました: ${fullPath}`);
+      }
+      
       console.error('❌ Error:', error instanceof Error ? error.message : 'Unknown error');
-      process.exit(1);
+      if (!options.markdown) {
+        process.exit(1);
+      }
     }
   });
 
@@ -219,7 +248,9 @@ program
       }
     } catch (error) {
       console.error('❌ Error:', error instanceof Error ? error.message : 'Unknown error');
-      process.exit(1);
+      if (!options.markdown) {
+        process.exit(1);
+      }
     }
   });
 
