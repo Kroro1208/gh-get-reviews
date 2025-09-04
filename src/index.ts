@@ -174,6 +174,13 @@ export class GitHubReviewsTracker {
                 // デバッグ：レビュー全体のbodyも確認
                 console.log(`[get-gh-reviews debug] PR #${pr.number} review ${review.id}: review body length = ${(review.body || "").length}, state = ${review.state}`);
                 
+                // デバッグ：コメントの詳細を出力
+                if (reviewComments.length > 0) {
+                  reviewComments.forEach((comment, idx) => {
+                    console.log(`[get-gh-reviews debug] Comment ${idx + 1}: body="${comment.body.substring(0, 50)}..." path="${comment.path}" line=${comment.line} diff_hunk_length=${comment.diff_hunk?.length || 0}`);
+                  });
+                }
+                
               } catch (error: unknown) {
                 console.log(`[get-gh-reviews debug] Could not fetch comments for review ${review.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
               }
@@ -356,6 +363,7 @@ export class GitHubReviewsTracker {
 
             // コードコメントを表示
             if (review.comments && review.comments.length > 0) {
+              console.log(`[get-gh-reviews debug] Generating markdown for ${review.comments.length} comments`);
               markdown += `**コードコメント:**\n\n`;
               
               review.comments.forEach((comment, index) => {
