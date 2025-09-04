@@ -52,7 +52,7 @@ const program = new Command();
 program
   .name('get-gh-reviews')
   .description('Track GitHub reviews you have received on your pull requests')
-  .version('1.2.0');
+  .version('1.2.1');
 
 interface ReviewsOptions {
   username: string;
