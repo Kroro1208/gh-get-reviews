@@ -274,7 +274,6 @@ ${sanitizeErrorMessage(error)}
         console.log(`✅ エラーレポートを生成しました: ${fullPath}`);
       }
       
-      console.error('❌ Error:', sanitizeErrorMessage(error));
       if (!options.markdown) {
         process.exit(1);
       }
@@ -348,7 +347,6 @@ program
         });
       }
     } catch (error) {
-      console.error('❌ Error:', sanitizeErrorMessage(error));
       if (!options.markdown) {
         process.exit(1);
       }

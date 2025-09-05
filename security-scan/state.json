@@ -1,0 +1,66 @@
+{
+  "scan_date": "2025-09-05",
+  "project": "get-gh-reviews",
+  "total_vulnerabilities": 5,
+  "vulnerabilities": {
+    "path_traversal_markdown": {
+      "id": "path_traversal_markdown",
+      "title": "Path Traversal in Markdown File Output",
+      "risk": "high",
+      "files": ["src/cli.ts:122", "src/cli.ts:175"],
+      "status": "fixed",
+      "description": "User-provided markdown filenames resolved without validation",
+      "fix_applied": "Added validateMarkdownPath() function with path sanitization, directory restriction, and filename validation",
+      "fix_date": "2025-09-05"
+    },
+    "unrestricted_file_write": {
+      "id": "unrestricted_file_write", 
+      "title": "Unrestricted File Write Access",
+      "risk": "high",
+      "files": ["src/cli.ts:125", "src/cli.ts:178"],
+      "status": "fixed",
+      "description": "Arbitrary file paths accepted for markdown output",
+      "fix_applied": "Same fix as path_traversal_markdown - validateMarkdownPath() prevents arbitrary file system access",
+      "fix_date": "2025-09-05"
+    },
+    "username_validation": {
+      "id": "username_validation",
+      "title": "Insufficient Username Input Validation", 
+      "risk": "medium",
+      "files": ["src/index.ts:105-108", "src/cli.ts:117-118"],
+      "status": "fixed",
+      "description": "GitHub usernames not validated properly",
+      "fix_applied": "Added validateGitHubUsername() function with proper GitHub username format validation",
+      "fix_date": "2025-09-05"
+    },
+    "error_disclosure": {
+      "id": "error_disclosure",
+      "title": "Information Disclosure in Error Messages",
+      "risk": "medium", 
+      "files": ["src/cli.ts:182", "src/index.ts:129-130"],
+      "status": "fixed",
+      "description": "Error messages may leak sensitive information",
+      "fix_applied": "Added sanitizeErrorMessage() function to remove sensitive information from error messages (paths, tokens, credentials) and provide user-friendly messages",
+      "fix_date": "2025-09-05"
+    },
+    "api_rate_limiting": {
+      "id": "api_rate_limiting",
+      "title": "No Rate Limiting for GitHub API Calls",
+      "risk": "low",
+      "files": ["src/index.ts:98-103", "src/index.ts:145-151"], 
+      "status": "fixed",
+      "description": "No rate limiting on API requests",
+      "fix_applied": "Added rateLimit() method with 100ms delays between API calls to stay well under GitHub's 5000 req/hour limit",
+      "fix_date": "2025-09-05"
+    }
+  },
+  "remediation_progress": {
+    "fixed": 5,
+    "pending": 0,
+    "critical_remaining": 0,
+    "high_remaining": 0,
+    "medium_remaining": 0,
+    "low_remaining": 0
+  },
+  "session_notes": "SECURITY REMEDIATION COMPLETE! All 5 vulnerabilities successfully fixed on 2025-09-05. Application now has proper path validation, input sanitization, error message security, and API rate limiting."
+}

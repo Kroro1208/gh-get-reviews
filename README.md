@@ -6,6 +6,20 @@
 
 > 📝 **Track GitHub reviews you received** - The missing GitHub feature!
 
+## 📦 Installation & Usage
+
+```bash
+# Option 1: Global installation
+npm install -g get-gh-reviews
+get-gh-reviews reviews -u YOUR_USERNAME
+
+# Option 2: No installation needed (npx)
+npx get-gh-reviews reviews -u YOUR_USERNAME
+
+# Generate markdown report
+npx get-gh-reviews reviews -u YOUR_USERNAME --markdown report.md
+```
+
 **Ever wondered who's been reviewing your code most frequently? Or what feedback patterns you're getting?** 
 
 `get-gh-reviews` is a powerful CLI tool that fills GitHub's gap by tracking all code reviews you've received across your repositories. Generate beautiful reports, discover review patterns, and level up your development workflow!
@@ -20,8 +34,9 @@ GitHub shows you "reviews requested" and lets you see "reviews given", but **the
 - 🔍 **Advanced filtering** - By time, organization, repository, and review status
 - ⚡ **Lightning fast** - Efficient GitHub API usage with smart caching
 
-## Quick Start
+## 🚀 Quick Start
 
+### Option A: Global Installation
 1. **Install globally:**
    ```bash
    npm install -g get-gh-reviews
@@ -35,6 +50,13 @@ GitHub shows you "reviews requested" and lets you see "reviews given", but **the
    ```bash
    get-gh-reviews reviews -u YOUR_GITHUB_USERNAME -t YOUR_TOKEN
    ```
+
+### Option B: No Installation (using npx)
+```bash
+npx get-gh-reviews reviews -u YOUR_GITHUB_USERNAME -t YOUR_TOKEN
+```
+
+**💡 Tip:** If you get "command not found" error, use `npx` - it always works!
 
 That's it! 🎉
 
@@ -60,12 +82,58 @@ That's it! 🎉
 - **🎨 Syntax Highlighting** - Code context with proper language detection
 - **🔗 Smart Linking** - Jump between TOC and detailed sections
 
-## Installation
+## 📦 Installation
 
-### Global Installation (CLI usage)
+### Method 1: Global Installation (Recommended)
 
 ```bash
 npm install -g get-gh-reviews
+```
+
+After installation, you can run the command directly:
+```bash
+get-gh-reviews reviews -u your-username --markdown my-reviews.md
+```
+
+### Method 2: Using npx (No installation required)
+
+If you don't want to install globally or have permission issues:
+```bash
+npx get-gh-reviews reviews -u your-username --markdown my-reviews.md
+```
+
+### Troubleshooting Installation Issues
+
+**If `get-gh-reviews` command is not found after global installation:**
+
+1. **Check if it's installed globally:**
+   ```bash
+   npm list -g get-gh-reviews
+   ```
+
+2. **Find npm's global bin directory:**
+   ```bash
+   npm bin -g
+   ```
+
+3. **Add to your PATH (if needed):**
+   ```bash
+   # Add this to your ~/.bashrc or ~/.zshrc
+   export PATH="$(npm bin -g):$PATH"
+   ```
+
+4. **Alternative: Use npx (always works):**
+   ```bash
+   npx get-gh-reviews --help
+   ```
+
+**For permission issues on macOS/Linux:**
+```bash
+# Option 1: Use npx (recommended)
+npx get-gh-reviews reviews -u username
+
+# Option 2: Fix npm permissions
+sudo npm install -g get-gh-reviews
 ```
 
 ### Local Installation (as dependency)
