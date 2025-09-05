@@ -11,15 +11,68 @@ import {
   ReviewStats,
 } from "./types.js";
 
+// Security utility function to sanitize error messages
+function sanitizeErrorMessage(error: unknown): string {
+  if (!error) {
+    return '不明なエラーが発生しました。';
+  }
+
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  
+  // Remove file system paths (Windows and Unix)
+  const sanitized = errorMessage
+    .replace(/[A-Z]:\\[\w\\.-]+/g, '[PATH]')  // Windows paths
+    .replace(/\/[\w\/-]+\//g, '[PATH]/')       // Unix paths
+    .replace(/\\[\w\\.-]+/g, '[PATH]')        // Relative paths
+    .replace(/file:\/\/\/[^\s]+/g, '[FILE_URL]') // File URLs
+    .replace(/https?:\/\/[^\s]+/g, '[URL]')     // HTTP URLs (might contain sensitive info)
+    .replace(/\b[A-Za-z0-9+/]{40,}={0,2}\b/g, '[TOKEN]') // Potential tokens
+    .replace(/password[=:]\s*[^\s]+/gi, 'password=[HIDDEN]')
+    .replace(/token[=:]\s*[^\s]+/gi, 'token=[HIDDEN]')
+    .replace(/key[=:]\s*[^\s]+/gi, 'key=[HIDDEN]');
+
+  // Provide user-friendly versions of common GitHub API errors
+  if (sanitized.includes('401')) {
+    return 'GitHubトークンが無効または期限切れです。';
+  }
+  if (sanitized.includes('403')) {
+    return 'GitHubトークンの権限が不足しているか、レート制限に達しました。';
+  }
+  if (sanitized.includes('404')) {
+    return '指定されたリソースが見つかりません。';
+  }
+  if (sanitized.includes('Network Error') || sanitized.includes('ENOTFOUND')) {
+    return 'ネットワーク接続エラーです。';
+  }
+  
+  // Return sanitized message, truncated to prevent information leakage
+  const truncated = sanitized.length > 100 ? sanitized.substring(0, 100) + '...' : sanitized;
+  return `API処理エラー: ${truncated}`;
+}
+
 export class GitHubReviewsTracker {
   private octokit: Octokit;
   private token: string;
+  private lastApiCall: number = 0;
+  private readonly API_DELAY = 100; // 100ms delay between requests (10 req/sec, well under 5000/hour limit)
 
   constructor(token: string) {
     this.token = token;
     this.octokit = new Octokit({
       auth: token,
     });
+  }
+
+  // Rate limiting utility to prevent hitting GitHub API limits
+  private async rateLimit(): Promise<void> {
+    const now = Date.now();
+    const timeSinceLastCall = now - this.lastApiCall;
+    
+    if (timeSinceLastCall < this.API_DELAY) {
+      await new Promise(resolve => setTimeout(resolve, this.API_DELAY - timeSinceLastCall));
+    }
+    
+    this.lastApiCall = Date.now();
   }
 
   // 現在のリポジトリ情報を取得
@@ -95,6 +148,7 @@ export class GitHubReviewsTracker {
         // 現在のリポジトリのPRのみを取得
 
         try {
+          await this.rateLimit();
           const { data: prs } = await this.octokit.rest.pulls.list({
             owner: currentRepo.owner,
             repo: currentRepo.repo,
@@ -125,9 +179,7 @@ export class GitHubReviewsTracker {
               );
             }
           }
-          const message =
-            error instanceof Error ? error.message : "Unknown error";
-          throw new Error(`PRの取得時にエラー: ${message}`);
+          throw new Error(`PRの取得時にエラー: ${sanitizeErrorMessage(error)}`);
         }
       } else {
         // 現在のリポジトリが見つからない場合のフォールバック
@@ -142,6 +194,7 @@ export class GitHubReviewsTracker {
         const [owner, repo] = pr.repository_url.split("/").slice(-2);
 
         try {
+          await this.rateLimit();
           const { data: prReviews } = await this.octokit.rest.pulls.listReviews(
             {
               owner,
@@ -155,6 +208,7 @@ export class GitHubReviewsTracker {
               // レビューコメント（特定の行に対するコメント）を取得
               let reviewComments: ReviewComment[] = [];
               try {
+                await this.rateLimit();
                 const { data: comments } =
                   await this.octokit.rest.pulls.listReviewComments({
                     owner,
@@ -223,7 +277,7 @@ export class GitHubReviewsTracker {
       };
     } catch (error) {
       throw new Error(
-        `Failed to fetch reviews: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to fetch reviews: ${sanitizeErrorMessage(error)}`
       );
     }
   }

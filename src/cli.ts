@@ -7,6 +7,89 @@ import * as path from 'path';
 import * as os from 'os';
 import { GitHubReviewsTracker } from './index.js';
 
+// Security utility function to sanitize error messages
+function sanitizeErrorMessage(error: unknown): string {
+  if (!error) {
+    return '不明なエラーが発生しました。';
+  }
+
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  
+  // Remove file system paths (Windows and Unix)
+  const sanitized = errorMessage
+    .replace(/[A-Z]:\\[\w\\.-]+/g, '[PATH]')  // Windows paths
+    .replace(/\/[\w\/-]+\//g, '[PATH]/')       // Unix paths
+    .replace(/\\[\w\\.-]+/g, '[PATH]')        // Relative paths
+    .replace(/file:\/\/\/[^\s]+/g, '[FILE_URL]') // File URLs
+    .replace(/https?:\/\/[^\s]+/g, '[URL]')     // HTTP URLs (might contain sensitive info)
+    .replace(/\b[A-Za-z0-9+/]{40,}={0,2}\b/g, '[TOKEN]') // Potential tokens
+    .replace(/password[=:]\s*[^\s]+/gi, 'password=[HIDDEN]')
+    .replace(/token[=:]\s*[^\s]+/gi, 'token=[HIDDEN]')
+    .replace(/key[=:]\s*[^\s]+/gi, 'key=[HIDDEN]');
+
+  // Provide user-friendly versions of common GitHub API errors
+  if (sanitized.includes('401')) {
+    return 'GitHubトークンが無効または期限切れです。新しいトークンを設定してください。';
+  }
+  if (sanitized.includes('403')) {
+    return 'GitHubトークンの権限が不足しているか、レート制限に達しました。';
+  }
+  if (sanitized.includes('404')) {
+    return '指定されたユーザーまたはリポジトリが見つかりません。';
+  }
+  if (sanitized.includes('Network Error') || sanitized.includes('ENOTFOUND')) {
+    return 'ネットワーク接続エラーです。インターネット接続を確認してください。';
+  }
+  
+  // Return sanitized message, truncated to prevent information leakage
+  const truncated = sanitized.length > 100 ? sanitized.substring(0, 100) + '...' : sanitized;
+  return `処理中にエラーが発生しました: ${truncated}`;
+}
+
+// Security utility function to validate GitHub usernames
+function validateGitHubUsername(username: string): boolean {
+  if (!username || typeof username !== 'string') {
+    return false;
+  }
+
+  // GitHub username rules:
+  // - Only alphanumeric characters and hyphens
+  // - Cannot start or end with hyphen
+  // - Cannot contain consecutive hyphens
+  // - Maximum 39 characters
+  // - Minimum 1 character
+  const githubUsernameRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]){0,37}[a-zA-Z0-9]$|^[a-zA-Z0-9]$/;
+  
+  return githubUsernameRegex.test(username) && !username.includes('--');
+}
+
+// Security utility function to validate and sanitize file paths
+function validateMarkdownPath(userInput: string): string | null {
+  if (!userInput || typeof userInput !== 'string') {
+    return null;
+  }
+
+  // Remove any path separators and resolve to current directory only
+  const sanitized = userInput.replace(/[\/\\]/g, '_').replace(/\.\./g, '_');
+  
+  // Ensure .md extension
+  const filename = sanitized.endsWith('.md') ? sanitized : `${sanitized}.md`;
+  
+  // Validate filename format (alphanumeric, hyphens, underscores, dots only)
+  if (!/^[a-zA-Z0-9._-]+\.md$/.test(filename)) {
+    return null;
+  }
+  
+  // Prevent overwriting sensitive files
+  const forbidden = ['package.json', 'tsconfig.json', '.env', 'README.md'];
+  if (forbidden.includes(filename)) {
+    return null;
+  }
+  
+  // Return safe path in current directory
+  return path.join(process.cwd(), filename);
+}
+
 // Setup configuration file
 function setupConfigFile() {
   const homeEnvPath = path.join(os.homedir(), '.get-gh-reviews.env');
@@ -88,6 +171,12 @@ program
   .option('--json', 'Output as JSON')
   .option('--markdown <filename>', 'Output as Markdown file')
   .action(async (options: ReviewsOptions) => {
+    // Validate username first
+    if (!validateGitHubUsername(options.username)) {
+      console.error('❌ 無効なGitHubユーザー名です。英数字とハイフンのみ使用可能です（最大39文字）。');
+      process.exit(1);
+    }
+    
     const token = options.token || process.env.GITHUB_TOKEN;
     
     if (!token) {
@@ -119,8 +208,11 @@ program
           includeStats: true
         });
         
-        const filename = options.markdown.endsWith('.md') ? options.markdown : `${options.markdown}.md`;
-        const fullPath = path.resolve(filename);
+        const fullPath = validateMarkdownPath(options.markdown);
+        if (!fullPath) {
+          console.error('❌ 無効なファイル名です。英数字、ハイフン、アンダースコアのみ使用可能です。');
+          process.exit(1);
+        }
         
         fs.writeFileSync(fullPath, markdownContent, 'utf8');
         console.log(`✅ Markdownレポートを生成しました: ${fullPath}`);
@@ -163,7 +255,7 @@ program
 ## ❌ エラー
 
 データの取得中にエラーが発生しました:
-${error instanceof Error ? error.message : 'Unknown error'}
+${sanitizeErrorMessage(error)}
 
 ## 💡 解決方法
 
@@ -172,14 +264,17 @@ ${error instanceof Error ? error.message : 'Unknown error'}
 3. ユーザーが存在し、検索可能な設定になっているか確認してください
 `;
         
-        const filename = options.markdown.endsWith('.md') ? options.markdown : `${options.markdown}.md`;
-        const fullPath = path.resolve(filename);
+        const fullPath = validateMarkdownPath(options.markdown);
+        if (!fullPath) {
+          console.error('❌ 無効なファイル名です。英数字、ハイフン、アンダースコアのみ使用可能です。');
+          return; // Don't exit in error handler, just skip file creation
+        }
         
         fs.writeFileSync(fullPath, errorMarkdown, 'utf8');
         console.log(`✅ エラーレポートを生成しました: ${fullPath}`);
       }
       
-      console.error('❌ Error:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('❌ Error:', sanitizeErrorMessage(error));
       if (!options.markdown) {
         process.exit(1);
       }
@@ -195,6 +290,12 @@ program
   .option('-d, --days <number>', 'Filter reviews from last N days')
   .option('--json', 'Output as JSON')
   .action(async (options: StatsOptions) => {
+    // Validate username first
+    if (!validateGitHubUsername(options.username)) {
+      console.error('❌ 無効なGitHubユーザー名です。英数字とハイフンのみ使用可能です（最大39文字）。');
+      process.exit(1);
+    }
+    
     const token = options.token || process.env.GITHUB_TOKEN;
     
     if (!token) {
@@ -247,7 +348,7 @@ program
         });
       }
     } catch (error) {
-      console.error('❌ Error:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('❌ Error:', sanitizeErrorMessage(error));
       if (!options.markdown) {
         process.exit(1);
       }
