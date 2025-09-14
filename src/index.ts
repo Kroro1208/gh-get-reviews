@@ -11,43 +11,47 @@ import {
   ReviewStats,
 } from "./types.js";
 
-// 可愛いローディング表示クラス
-class CuteLoader {
+// ASCIIアートローディング表示クラス
+class ASCIILoader {
   private interval: NodeJS.Timeout | null = null;
   private currentFrame = 0;
-  private message = "";
 
-  private frames = [
-    "🐱 meow...",
-    "🐱 meow.",
-    "🐱 meow..",
-    "🐾 paws...",
-    "🐾 paws.",
-    "🐾 paws..",
-    "🦄 magic...",
-    "🦄 magic.",
-    "🦄 magic..",
-    "🌟 sparkle...",
-    "🌟 sparkle.",
-    "🌟 sparkle..",
-  ];
+  private asciiArt = `
+   ██████╗ ███████╗████████╗       ██████╗ ██╗  ██╗      ██████╗ ███████╗██╗   ██╗██╗███████╗██╗    ██╗███████╗
+  ██╔════╝ ██╔════╝╚══██╔══╝      ██╔════╝ ██║  ██║      ██╔══██╗██╔════╝██║   ██║██║██╔════╝██║    ██║██╔════╝
+  ██║  ███╗█████╗     ██║  █████╗ ██║  ███╗███████║█████╗██████╔╝█████╗  ██║   ██║██║█████╗  ██║ █╗ ██║███████╗
+  ██║   ██║██╔══╝     ██║  ╚════╝ ██║   ██║██╔══██║╚════╝██╔══██╗██╔══╝  ╚██╗ ██╔╝██║██╔══╝  ██║███╗██║╚════██║
+  ╚██████╔╝███████╗   ██║         ╚██████╔╝██║  ██║      ██║  ██║███████╗ ╚████╔╝ ██║███████╗╚███╔███╔╝███████║
+   ╚═════╝ ╚══════╝   ╚═╝          ╚═════╝ ╚═╝  ╚═╝      ╚═╝  ╚═╝╚══════╝  ╚═══╝  ╚═╝╚══════╝ ╚══╝╚══╝ ╚══════╝
 
-  start(message: string) {
-    this.message = message;
+  `;
+
+  private dots = ['', '.', '..', '...'];
+
+  start() {
     this.currentFrame = 0;
+
+    // 画面をクリア
+    console.clear();
 
     // カーソルを隠す
     process.stdout.write('\x1B[?25l');
 
+    // ASCIIアートを表示
+    console.log('\x1b[36m%s\x1b[0m', this.asciiArt); // シアン色
+
+    console.log('\x1b[33m%s\x1b[0m', '  Tips for getting started:');
+    console.log('  1. Make sure you have a valid GitHub token with repo access');
+    console.log('  2. Run with your GitHub username to track received reviews');
+    console.log('  3. Generate beautiful Markdown reports with --markdown flag');
+    console.log('  4. Use --help for more information');
+    console.log();
+
     this.interval = setInterval(() => {
       process.stdout.write('\r\x1B[K'); // 行をクリア
-      process.stdout.write(`${this.frames[this.currentFrame]} ${this.message}`);
-      this.currentFrame = (this.currentFrame + 1) % this.frames.length;
-    }, 300);
-  }
-
-  updateMessage(message: string) {
-    this.message = message;
+      process.stdout.write(`\x1b[32m  Fetching GitHub reviews${this.dots[this.currentFrame]}\x1b[0m`);
+      this.currentFrame = (this.currentFrame + 1) % this.dots.length;
+    }, 500);
   }
 
   stop(finalMessage?: string) {
@@ -58,7 +62,7 @@ class CuteLoader {
 
     process.stdout.write('\r\x1B[K'); // 行をクリア
     if (finalMessage) {
-      console.log(finalMessage);
+      console.log('\x1b[32m%s\x1b[0m', `  ${finalMessage}`);
     }
 
     // カーソルを表示
@@ -110,27 +114,20 @@ export class GitHubReviewsTracker {
   private token: string;
   private lastApiCall: number = 0;
   private readonly API_DELAY = 100; // 100ms delay between requests (10 req/sec, well under 5000/hour limit)
-  private loader?: CuteLoader;
+  private loader?: ASCIILoader;
 
   constructor(token: string) {
     this.token = token;
     this.octokit = new Octokit({
       auth: token,
     });
-    this.loader = new CuteLoader();
+    this.loader = new ASCIILoader();
   }
 
   // ローディング表示を開始
-  private startLoading(message: string) {
+  private startLoading() {
     if (this.loader) {
-      this.loader.start(message);
-    }
-  }
-
-  // ローディングメッセージを更新
-  private updateLoading(message: string) {
-    if (this.loader) {
-      this.loader.updateMessage(message);
+      this.loader.start();
     }
   }
 
@@ -215,7 +212,7 @@ export class GitHubReviewsTracker {
       timeframe = null,
     } = options;
 
-    this.startLoading("リポジトリ情報を取得中...");
+    this.startLoading();
 
     try {
       const reviews: Review[] = [];
@@ -225,7 +222,6 @@ export class GitHubReviewsTracker {
       const currentRepo = this.getCurrentRepository();
 
       if (currentRepo) {
-        this.updateLoading(`プルリクエスト一覧を取得中... (${currentRepo.owner}/${currentRepo.repo})`);
 
         try {
           await this.rateLimit();
@@ -268,13 +264,11 @@ export class GitHubReviewsTracker {
         );
       }
 
-      this.updateLoading(`レビューを取得中... (${pullRequests.items.length}件のPRをチェック)`);
 
       for (let i = 0; i < pullRequests.items.length; i++) {
         const pr = pullRequests.items[i];
         if (!pr.repository_url) continue;
 
-        this.updateLoading(`レビューを取得中... (${i + 1}/${pullRequests.items.length}) ${pr.title}`);
 
         const [owner, repo] = pr.repository_url.split("/").slice(-2);
 
@@ -372,7 +366,7 @@ export class GitHubReviewsTracker {
         }
       }
 
-      this.stopLoading(`🎉 完了！ ${reviews.length}件のレビューを取得しました`);
+      this.stopLoading(`✅ Complete! Found ${reviews.length} reviews`);
 
       return {
         reviews: reviews.sort(
@@ -385,7 +379,7 @@ export class GitHubReviewsTracker {
         per_page,
       };
     } catch (error) {
-      this.stopLoading("❌ エラーが発生しました");
+      this.stopLoading("❌ Error occurred");
       throw new Error(
         `Failed to fetch reviews: ${sanitizeErrorMessage(error)}`
       );

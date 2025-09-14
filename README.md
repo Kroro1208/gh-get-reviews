@@ -553,6 +553,20 @@ If this tool helped you track your reviews and improve your workflow:
 
 ## 📋 Changelog
 
+### v1.7.2 (2025-01-15)
+🎨 **Enhanced Visual Experience**
+
+**New Features:**
+- 🖥️ **ASCII Art Loading Screen** - Beautiful GET-GH-REVIEWS ASCII art logo displayed during processing
+- 💡 **Helpful Tips Display** - Shows useful getting started tips while loading reviews
+- 🎨 **Colorful Terminal Output** - Enhanced visual experience with colored text and clear formatting
+- 📺 **Clean Screen Management** - Auto-clears screen for better presentation
+
+**Improvements:**
+- 🚀 **Better User Experience** - Clear visual feedback with professional ASCII branding
+- 📋 **Informative Loading** - Users see helpful tips instead of just waiting
+- 🎯 **Professional Appearance** - Tool now has distinctive visual identity
+
 ### v1.7.1 (2025-01-15)
 🔧 **Bug Fixes & Quality Improvements**
 
