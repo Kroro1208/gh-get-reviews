@@ -1,5 +1,7 @@
 # 🔍 get-gh-reviews
 
+[here is the detail](https://x.com/Nao8epicmotion/status/1967094111581991205)
+
 [![npm version](https://badge.fury.io/js/get-gh-reviews.svg)](https://badge.fury.io/js/get-gh-reviews)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 [![Node.js](https://img.shields.io/badge/Node.js-14.0.0+-green.svg)](https://nodejs.org/)
