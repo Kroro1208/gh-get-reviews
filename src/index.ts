@@ -11,6 +11,61 @@ import {
   ReviewStats,
 } from "./types.js";
 
+// 可愛いローディング表示クラス
+class CuteLoader {
+  private interval: NodeJS.Timeout | null = null;
+  private currentFrame = 0;
+  private message = "";
+
+  private frames = [
+    "🐱 meow...",
+    "🐱 meow.",
+    "🐱 meow..",
+    "🐾 paws...",
+    "🐾 paws.",
+    "🐾 paws..",
+    "🦄 magic...",
+    "🦄 magic.",
+    "🦄 magic..",
+    "🌟 sparkle...",
+    "🌟 sparkle.",
+    "🌟 sparkle..",
+  ];
+
+  start(message: string) {
+    this.message = message;
+    this.currentFrame = 0;
+
+    // カーソルを隠す
+    process.stdout.write('\x1B[?25l');
+
+    this.interval = setInterval(() => {
+      process.stdout.write('\r\x1B[K'); // 行をクリア
+      process.stdout.write(`${this.frames[this.currentFrame]} ${this.message}`);
+      this.currentFrame = (this.currentFrame + 1) % this.frames.length;
+    }, 300);
+  }
+
+  updateMessage(message: string) {
+    this.message = message;
+  }
+
+  stop(finalMessage?: string) {
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = null;
+    }
+
+    process.stdout.write('\r\x1B[K'); // 行をクリア
+    if (finalMessage) {
+      console.log(finalMessage);
+    }
+
+    // カーソルを表示
+    process.stdout.write('\x1B[?25h');
+  }
+}
+
 // Security utility function to sanitize error messages
 function sanitizeErrorMessage(error: unknown): string {
   if (!error) {
@@ -55,12 +110,35 @@ export class GitHubReviewsTracker {
   private token: string;
   private lastApiCall: number = 0;
   private readonly API_DELAY = 100; // 100ms delay between requests (10 req/sec, well under 5000/hour limit)
+  private loader?: CuteLoader;
 
   constructor(token: string) {
     this.token = token;
     this.octokit = new Octokit({
       auth: token,
     });
+    this.loader = new CuteLoader();
+  }
+
+  // ローディング表示を開始
+  private startLoading(message: string) {
+    if (this.loader) {
+      this.loader.start(message);
+    }
+  }
+
+  // ローディングメッセージを更新
+  private updateLoading(message: string) {
+    if (this.loader) {
+      this.loader.updateMessage(message);
+    }
+  }
+
+  // ローディング表示を停止
+  private stopLoading(finalMessage?: string) {
+    if (this.loader) {
+      this.loader.stop(finalMessage);
+    }
   }
 
   // Rate limiting utility to prevent hitting GitHub API limits
@@ -137,6 +215,8 @@ export class GitHubReviewsTracker {
       timeframe = null,
     } = options;
 
+    this.startLoading("リポジトリ情報を取得中...");
+
     try {
       const reviews: Review[] = [];
       let pullRequests: { items: any[] } = { items: [] };
@@ -145,7 +225,7 @@ export class GitHubReviewsTracker {
       const currentRepo = this.getCurrentRepository();
 
       if (currentRepo) {
-        // 現在のリポジトリのPRのみを取得
+        this.updateLoading(`プルリクエスト一覧を取得中... (${currentRepo.owner}/${currentRepo.repo})`);
 
         try {
           await this.rateLimit();
@@ -188,8 +268,13 @@ export class GitHubReviewsTracker {
         );
       }
 
-      for (const pr of pullRequests.items) {
+      this.updateLoading(`レビューを取得中... (${pullRequests.items.length}件のPRをチェック)`);
+
+      for (let i = 0; i < pullRequests.items.length; i++) {
+        const pr = pullRequests.items[i];
         if (!pr.repository_url) continue;
+
+        this.updateLoading(`レビューを取得中... (${i + 1}/${pullRequests.items.length}) ${pr.title}`);
 
         const [owner, repo] = pr.repository_url.split("/").slice(-2);
 
@@ -227,9 +312,30 @@ export class GitHubReviewsTracker {
                     line: comment.line || comment.original_line || undefined,
                     diff_hunk: comment.diff_hunk || undefined,
                     url: comment.html_url || "",
+                    created_at: comment.created_at || "",
+                    id: comment.id || 0,
+                    user: comment.user ? {
+                      login: comment.user.login || "",
+                      avatar_url: comment.user.avatar_url
+                    } : undefined,
                   }));
               } catch (error: unknown) {
                 // Skip if comments cannot be fetched
+              }
+
+              // 返信コメント（issue comments）も取得
+              let replyComments: any[] = [];
+              try {
+                await this.rateLimit();
+                const { data: issueComments } =
+                  await this.octokit.rest.issues.listComments({
+                    owner,
+                    repo,
+                    issue_number: pr.number,
+                  });
+                replyComments = issueComments;
+              } catch (error: unknown) {
+                // Skip if reply comments cannot be fetched
               }
 
               const reviewData: Review = {
@@ -245,6 +351,7 @@ export class GitHubReviewsTracker {
                 review_url: review.html_url || "",
                 comments:
                   reviewComments.length > 0 ? reviewComments : undefined,
+                reply_comments: replyComments,
               };
 
               if (timeframe) {
@@ -265,6 +372,8 @@ export class GitHubReviewsTracker {
         }
       }
 
+      this.stopLoading(`🎉 完了！ ${reviews.length}件のレビューを取得しました`);
+
       return {
         reviews: reviews.sort(
           (a, b) =>
@@ -276,6 +385,7 @@ export class GitHubReviewsTracker {
         per_page,
       };
     } catch (error) {
+      this.stopLoading("❌ エラーが発生しました");
       throw new Error(
         `Failed to fetch reviews: ${sanitizeErrorMessage(error)}`
       );
@@ -380,9 +490,39 @@ export class GitHubReviewsTracker {
     );
 
     markdown += `## 📋 目次\n\n`;
+
+    // PRごとの目次
+    markdown += `### プルリクエスト一覧\n\n`;
     sortedPrGroups.forEach((prGroup) => {
       const anchorId = `pr-${prGroup.repository.replace('/', '-')}-${prGroup.pr_number}`;
       markdown += `- [${prGroup.pr_title}](#${anchorId}) - **${prGroup.reviews.length}件のレビュー** (${prGroup.repository}#${prGroup.pr_number})\n`;
+    });
+    markdown += `\n`;
+
+    // レビューコメント一覧の目次
+    markdown += `### レビューコメント一覧\n\n`;
+    sortedPrGroups.forEach((prGroup) => {
+      prGroup.reviews
+        .sort(
+          (a, b) =>
+            new Date(b.submitted_at).getTime() -
+            new Date(a.submitted_at).getTime()
+        )
+        .forEach((review) => {
+          const stateEmoji: Record<ReviewState, string> = {
+            APPROVED: "✅",
+            CHANGES_REQUESTED: "🔄",
+            COMMENTED: "💬",
+            DISMISSED: "❌",
+          };
+
+          const reviewAnchorId = `review-${prGroup.repository.replace('/', '-')}-${prGroup.pr_number}-${review.reviewer}`;
+          const reviewTitle = review.body ?
+            review.body.split('\n')[0].substring(0, 20) + (review.body.length > 20 ? '...' : '') :
+            `${review.state}レビュー`;
+
+          markdown += `- ${stateEmoji[review.state] || "❓"} [${review.reviewer}: ${reviewTitle}](#${reviewAnchorId}) - ${prGroup.pr_title}\n`;
+        });
     });
     markdown += `\n`;
 
@@ -393,13 +533,52 @@ export class GitHubReviewsTracker {
         markdown += `### <a id="${anchorId}"></a>[${prGroup.pr_title}](${prGroup.pr_url}) (#${prGroup.pr_number})\n\n`;
         markdown += `**リポジトリ:** ${prGroup.repository}\n\n`;
 
-        prGroup.reviews
-          .sort(
-            (a, b) =>
-              new Date(b.submitted_at).getTime() -
-              new Date(a.submitted_at).getTime()
-          )
-          .forEach((review) => {
+        // 時系列順のタイムラインを作成
+        const timeline: any[] = [];
+
+        prGroup.reviews.forEach((review) => {
+          // レビュー本体を追加
+          timeline.push({
+            type: 'review',
+            created_at: review.submitted_at,
+            review: review,
+            id: `review-${review.reviewer}-${review.submitted_at}`
+          });
+
+          // コードコメントを追加
+          if (review.comments) {
+            review.comments.forEach((comment) => {
+              timeline.push({
+                type: 'comment',
+                created_at: comment.created_at,
+                comment: comment,
+                id: `comment-${comment.id}`
+              });
+            });
+          }
+
+          // 返信コメントを追加
+          if (review.reply_comments) {
+            review.reply_comments.forEach((reply: any) => {
+              if (reply.user?.login !== username) { // 自分以外のコメント
+                timeline.push({
+                  type: 'reply',
+                  created_at: reply.created_at,
+                  reply: reply,
+                  id: `reply-${reply.id}`
+                });
+              }
+            });
+          }
+        });
+
+        // 時系列順にソート
+        timeline.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+        // タイムラインを表示
+        timeline.forEach((item) => {
+          if (item.type === 'review') {
+            const review = item.review;
             const stateEmoji: Record<ReviewState, string> = {
               APPROVED: "✅",
               CHANGES_REQUESTED: "🔄",
@@ -407,101 +586,104 @@ export class GitHubReviewsTracker {
               DISMISSED: "❌",
             };
 
-            markdown += `#### ${stateEmoji[review.state] || "❓"} ${review.state} by [@${review.reviewer}](https://github.com/${review.reviewer})\n\n`;
+            const reviewAnchorId = `review-${prGroup.repository.replace('/', '-')}-${prGroup.pr_number}-${review.reviewer}`;
+            markdown += `#### <a id="${reviewAnchorId}"></a>${stateEmoji[review.state as ReviewState] || "❓"} ${review.state} by [@${review.reviewer}](https://github.com/${review.reviewer})\n\n`;
             markdown += `**日時:** ${new Date(review.submitted_at).toLocaleString("ja-JP")}\n`;
 
             if (review.body && review.body.trim()) {
               markdown += `**コメント:**\n> ${review.body.replace(/\n/g, "\n> ")}\n\n`;
             }
 
-            // コードコメントを表示
-            if (review.comments && review.comments.length > 0) {
-              markdown += `**コードコメント:**\n\n`;
-
-              review.comments.forEach((comment, index) => {
-                if (comment.path) {
-                  markdown += `**📁 ${comment.path}${comment.line ? `:${comment.line}` : ""}**\n\n`;
-                }
-
-                if (comment.diff_hunk) {
-                  // diff_hunkから関連する部分のみを抽出
-                  const lines = comment.diff_hunk.split('\n');
-                  const targetLine = comment.line;
-                  
-                  // ファイル拡張子から言語を推測
-                  let language = 'text';
-                  if (comment.path) {
-                    const ext = comment.path.split('.').pop()?.toLowerCase();
-                    switch (ext) {
-                      case 'js': case 'jsx': language = 'javascript'; break;
-                      case 'ts': case 'tsx': language = 'typescript'; break;
-                      case 'go': language = 'go'; break;
-                      case 'py': language = 'python'; break;
-                      case 'java': language = 'java'; break;
-                      case 'sql': language = 'sql'; break;
-                      case 'json': language = 'json'; break;
-                      case 'yml': case 'yaml': language = 'yaml'; break;
-                      case 'html': language = 'html'; break;
-                      case 'css': language = 'css'; break;
-                    }
-                  }
-                  
-                  // 大きなdiffの場合は、コメント行周辺のコンテキストを抽出
-                  if (lines.length > 50) {
-                    // コメント対象行の周辺（前後10行程度）を抽出
-                    let contextLines: string[] = [];
-                    let lineNumber = 1;
-                    
-                    for (const line of lines) {
-                      if (line.startsWith('@@')) continue;
-                      
-                      if (line.startsWith('+')) {
-                        if (targetLine && Math.abs(lineNumber - targetLine) <= 10) {
-                          contextLines.push(line.substring(1)); // +を除去
-                        }
-                        lineNumber++;
-                      } else if (line.startsWith(' ')) {
-                        if (targetLine && Math.abs(lineNumber - targetLine) <= 10) {
-                          contextLines.push(line.substring(1)); // スペースを除去
-                        }
-                        lineNumber++;
-                      }
-                    }
-                    
-                    if (contextLines.length > 0) {
-                      const codeContent = contextLines.join('\n');
-                      markdown += `\`\`\`${language}\n${codeContent}\n\`\`\`\n\n`;
-                    } else {
-                      // フォールバック: 最初の20行程度を表示
-                      const shortDiff = lines.slice(0, 25).join('\n');
-                      markdown += `\`\`\`diff\n${shortDiff}\n...\n\`\`\`\n\n`;
-                    }
-                  } else {
-                    // 小さなdiffの場合はそのまま表示
-                    markdown += `\`\`\`diff\n${comment.diff_hunk}\n\`\`\`\n\n`;
-                  }
-                }
-
-                markdown += `> 💬 ${comment.body.replace(/\n/g, "\n> ")}\n\n`;
-
-                if (comment.url) {
-                  markdown += `[🔗 コメントを表示](${comment.url})\n\n`;
-                }
-
-                if (review.comments && index < review.comments.length - 1) {
-                  markdown += `---\n\n`;
-                }
-              });
-            } else {
-              markdown += `_（コードコメントなし）_\n\n`;
-            }
-
             if (review.review_url) {
               markdown += `**[📖 レビュー全体を表示](${review.review_url})**\n\n`;
             }
+          } else if (item.type === 'comment') {
+            const comment = item.comment;
 
-            markdown += `---\n\n`;
-          });
+            markdown += `#### 💬 コードコメント by [@${comment.user?.login || 'unknown'}](https://github.com/${comment.user?.login || 'unknown'})\n\n`;
+            markdown += `**日時:** ${new Date(comment.created_at).toLocaleString("ja-JP")}\n\n`;
+
+            if (comment.path) {
+              markdown += `**📁 ${comment.path}${comment.line ? `:${comment.line}` : ""}**\n\n`;
+            }
+
+            if (comment.diff_hunk) {
+              // diff_hunkから関連する部分のみを抽出
+              const lines = comment.diff_hunk.split('\n');
+              const targetLine = comment.line;
+
+              // ファイル拡張子から言語を推測
+              let language = 'text';
+              if (comment.path) {
+                const ext = comment.path.split('.').pop()?.toLowerCase();
+                switch (ext) {
+                  case 'js': case 'jsx': language = 'javascript'; break;
+                  case 'ts': case 'tsx': language = 'typescript'; break;
+                  case 'go': language = 'go'; break;
+                  case 'py': language = 'python'; break;
+                  case 'java': language = 'java'; break;
+                  case 'sql': language = 'sql'; break;
+                  case 'json': language = 'json'; break;
+                  case 'yml': case 'yaml': language = 'yaml'; break;
+                  case 'html': language = 'html'; break;
+                  case 'css': language = 'css'; break;
+                }
+              }
+
+              // 大きなdiffの場合は、コメント行周辺のコンテキストを抽出
+              if (lines.length > 50) {
+                // コメント対象行の周辺（前後10行程度）を抽出
+                let contextLines: string[] = [];
+                let lineNumber = 1;
+
+                for (const line of lines) {
+                  if (line.startsWith('@@')) continue;
+
+                  if (line.startsWith('+')) {
+                    if (targetLine && Math.abs(lineNumber - targetLine) <= 10) {
+                      contextLines.push(line.substring(1)); // +を除去
+                    }
+                    lineNumber++;
+                  } else if (line.startsWith(' ')) {
+                    if (targetLine && Math.abs(lineNumber - targetLine) <= 10) {
+                      contextLines.push(line.substring(1)); // スペースを除去
+                    }
+                    lineNumber++;
+                  }
+                }
+
+                if (contextLines.length > 0) {
+                  const codeContent = contextLines.join('\n');
+                  markdown += `\`\`\`${language}\n${codeContent}\n\`\`\`\n\n`;
+                } else {
+                  // フォールバック: 最初の20行程度を表示
+                  const shortDiff = lines.slice(0, 25).join('\n');
+                  markdown += `\`\`\`diff\n${shortDiff}\n...\n\`\`\`\n\n`;
+                }
+              } else {
+                // 小さなdiffの場合はそのまま表示
+                markdown += `\`\`\`diff\n${comment.diff_hunk}\n\`\`\`\n\n`;
+              }
+            }
+
+            markdown += `> 💬 ${comment.body.replace(/\n/g, "\n> ")}\n\n`;
+
+            if (comment.url) {
+              markdown += `[🔗 コメントを表示](${comment.url})\n\n`;
+            }
+          } else if (item.type === 'reply') {
+            const reply = item.reply;
+            markdown += `#### 💭 返信コメント by [@${reply.user?.login || 'unknown'}](https://github.com/${reply.user?.login || 'unknown'})\n\n`;
+            markdown += `**日時:** ${new Date(reply.created_at).toLocaleString("ja-JP")}\n\n`;
+            markdown += `> 💭 ${reply.body.replace(/\n/g, "\n> ")}\n\n`;
+
+            if (reply.html_url) {
+              markdown += `[🔗 コメントを表示](${reply.html_url})\n\n`;
+            }
+          }
+
+          markdown += `---\n\n`;
+        });
       });
 
     return markdown;

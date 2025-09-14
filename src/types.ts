@@ -4,6 +4,12 @@ export interface ReviewComment {
   line?: number;
   diff_hunk?: string;
   url: string;
+  created_at: string;
+  id: number;
+  user?: {
+    login: string;
+    avatar_url?: string;
+  };
 }
 
 export interface Review {
@@ -18,6 +24,7 @@ export interface Review {
   body: string;
   review_url: string;
   comments?: ReviewComment[];
+  reply_comments?: any[];
 }
 
 export type ReviewState = 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED';
@@ -51,4 +58,16 @@ export interface ReviewStats {
 export interface MarkdownOptions {
   title?: string;
   includeStats?: boolean;
+}
+
+// GitHub conversation timeline item
+export interface TimelineItem {
+  type: 'review' | 'comment' | 'reply';
+  created_at: string;
+  id: string;
+  user: string;
+  body: string;
+  review?: Review;
+  comment?: ReviewComment;
+  reply_to?: number;
 }
