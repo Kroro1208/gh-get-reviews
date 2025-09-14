@@ -1,6 +1,6 @@
 {
   "name": "get-gh-reviews",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "type": "module",
   "description": "Track GitHub reviews you have received on your pull requests. Install: npm i -g get-gh-reviews OR use: npx get-gh-reviews",
   "main": "dist/index.js",

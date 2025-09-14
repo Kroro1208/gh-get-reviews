@@ -553,6 +553,20 @@ If this tool helped you track your reviews and improve your workflow:
 
 ## 📋 Changelog
 
+### v1.7.1 (2025-01-15)
+🔧 **Bug Fixes & Quality Improvements**
+
+**Bug Fixes:**
+- 🐛 **Fixed Duplicate Reviews** - Eliminated duplicate review entries in both table of contents and detail sections
+- 📋 **Improved Review Display** - Review comments now show actual content (first 30 characters) instead of generic "COMMENTEDレビュー" text
+- 🔍 **Enhanced PR Grouping** - Reviews are now properly grouped by PR in the table of contents with unique identification
+- 💻 **Restored Code Diff Display** - Code diff viewing functionality was accidentally removed during simplification and has been restored
+
+**Improvements:**
+- 🎯 **Better Content Preview** - Table of contents now shows meaningful review content snippets for easier navigation
+- 📊 **More Accurate Review Counts** - Duplicate removal ensures accurate review counts per PR
+- 🔗 **Improved Navigation** - Enhanced anchor links between table of contents and detailed sections
+
 ### v1.7.0 (2025-01-15)
 🎉 **Major Update - Enhanced User Experience!**
 
