@@ -30,9 +30,11 @@ GitHub shows you "reviews requested" and lets you see "reviews given", but **the
 
 - 🎯 **Complete review visibility** - See ALL reviews across ALL your PRs
 - 📊 **Smart analytics** - Discover who reviews you most, review patterns, and more
-- 📝 **Beautiful reports** - Generate shareable Markdown reports with table of contents
+- 📝 **Beautiful reports** - Generate shareable Markdown reports with enhanced table of contents
 - 🔍 **Advanced filtering** - By time, organization, repository, and review status
 - ⚡ **Lightning fast** - Efficient GitHub API usage with smart caching
+- 🐱 **Cute loading animations** - Enjoy adorable characters while processing
+- 📅 **Timeline view** - GitHub-style chronological display of reviews and replies
 
 ## 🚀 Quick Start
 
@@ -548,6 +550,32 @@ If this tool helped you track your reviews and improve your workflow:
 - 🐦 **Share on Twitter/LinkedIn**  
 - 📝 **Write a blog post** about your experience
 - 🤝 **Contribute** code, documentation, or ideas
+
+## 📋 Changelog
+
+### v1.7.0 (2025-01-15)
+🎉 **Major Update - Enhanced User Experience!**
+
+**New Features:**
+- 🐱 **Cute Loading Animations** - Added adorable characters (meow, paws, magic, sparkle) during processing
+- 📅 **Timeline View** - GitHub-style chronological display mixing reviews, code comments, and replies
+- 📋 **Enhanced Table of Contents** - Separate sections for PRs and individual review comments with clickable navigation
+- 🌐 **International Support** - Loading messages now use English-friendly cute characters
+
+**Improvements:**
+- ⚡ **Better Progress Tracking** - Real-time display of which PR is being processed (e.g., "Processing 3/10: PR Title")
+- 📊 **Detailed Status Updates** - Step-by-step progress from repository discovery to completion
+- 🎯 **More Accurate Timeline** - Reviews and replies now display in exact chronological order like GitHub
+
+**Bug Fixes:**
+- 🔧 Fixed timeline ordering issues
+- 🛠️ Improved error handling during data collection
+
+### Previous Versions
+- v1.6.2 - Security improvements and error handling
+- v1.6.0 - Added support for private repositories
+- v1.5.0 - Markdown report generation
+- v1.4.0 - Statistics and filtering features
 
 ---
 
