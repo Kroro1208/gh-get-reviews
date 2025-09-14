@@ -553,6 +553,18 @@ If this tool helped you track your reviews and improve your workflow:
 
 ## 📋 Changelog
 
+### v1.7.5 (2025-01-15)
+🔧 **Progress Bar Stability Fix**
+
+**Bug Fixes:**
+- 📊 **Fixed Progress Bar Position** - Progress bar no longer shifts horizontally due to variable dot lengths
+- 🎯 **Stable Loading Animation** - Loading text now uses fixed-width formatting for consistent display
+- 📏 **Aligned Progress Display** - Percentage values are now right-aligned for better readability
+
+**Improvements:**
+- ✨ **Smoother User Experience** - Progress bar stays in a consistent position during loading
+- 🎨 **Better Visual Alignment** - All progress elements maintain proper spacing
+
 ### v1.7.4 (2025-01-15)
 🌐 **International Support Enhancement**
 

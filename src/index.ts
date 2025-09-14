@@ -63,12 +63,14 @@ class ASCIILoader {
   private updateProgressLine() {
     process.stdout.write('\r\x1B[K'); // 行をクリア
 
-    let progressText = `\x1b[32m  Fetching GitHub reviews${this.dots[this.currentFrame]}\x1b[0m`;
+    // 固定幅のローディングテキスト（常に3文字の点を確保）
+    const loadingText = `  Fetching GitHub reviews${this.dots[this.currentFrame].padEnd(3)}`;
+    let progressText = `\x1b[32m${loadingText}\x1b[0m`;
 
     if (this.total > 0) {
       const percentage = Math.round((this.progress / this.total) * 100);
       const progressBar = this.createProgressBar(percentage);
-      progressText += ` ${progressBar} ${percentage}% (${this.progress}/${this.total})`;
+      progressText += ` ${progressBar} ${percentage.toString().padStart(3)}% (${this.progress}/${this.total})`;
     }
 
     process.stdout.write(progressText);
