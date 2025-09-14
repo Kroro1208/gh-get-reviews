@@ -553,6 +553,34 @@ If this tool helped you track your reviews and improve your workflow:
 
 ## 📋 Changelog
 
+### v1.7.4 (2025-01-15)
+🌐 **International Support Enhancement**
+
+**New Features:**
+- 🌐 **Bilingual Display** - All Japanese terms now show English equivalents (e.g., "APPROVED (承認済み)")
+- 📝 **Bilingual Section Headers** - All major sections display both English and Japanese
+- 🔗 **Bilingual Links** - Link texts now include both language versions
+- 📊 **International Statistics** - Status displays are now globally accessible
+
+**Improvements:**
+- 🌍 **Global Accessibility** - Non-Japanese speakers can now understand all report sections
+- 📋 **Clear Status Labels** - Review states clearly show both English and Japanese terms
+- 🎯 **Professional International Reports** - Reports are now suitable for international teams
+
+### v1.7.3 (2025-01-15)
+📊 **Progress Tracking Enhancement**
+
+**New Features:**
+- 📊 **Progress Bar** - Real-time visual progress bar showing review fetching progress
+- 📈 **Percentage Display** - Shows completion percentage alongside the progress bar
+- 🔢 **Current/Total Counter** - Displays current item vs total items being processed
+- 🎨 **Colored Progress Bar** - Beautiful cyan-colored progress visualization
+
+**Improvements:**
+- ⚡ **Better User Feedback** - Users can see exactly how much work remains
+- 📊 **Visual Progress Tracking** - Progress bar updates in real-time as PRs are processed
+- 🎯 **Professional Loading Experience** - Combines ASCII art, tips, and progress tracking
+
 ### v1.7.2 (2025-01-15)
 🎨 **Enhanced Visual Experience**
 

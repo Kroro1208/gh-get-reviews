@@ -15,6 +15,8 @@ import {
 class ASCIILoader {
   private interval: NodeJS.Timeout | null = null;
   private currentFrame = 0;
+  private progress = 0;
+  private total = 0;
 
   private asciiArt = `
    ██████╗ ███████╗████████╗       ██████╗ ██╗  ██╗      ██████╗ ███████╗██╗   ██╗██╗███████╗██╗    ██╗███████╗
@@ -48,10 +50,38 @@ class ASCIILoader {
     console.log();
 
     this.interval = setInterval(() => {
-      process.stdout.write('\r\x1B[K'); // 行をクリア
-      process.stdout.write(`\x1b[32m  Fetching GitHub reviews${this.dots[this.currentFrame]}\x1b[0m`);
+      this.updateProgressLine();
       this.currentFrame = (this.currentFrame + 1) % this.dots.length;
     }, 500);
+  }
+
+  updateProgress(current: number, total: number) {
+    this.progress = current;
+    this.total = total;
+  }
+
+  private updateProgressLine() {
+    process.stdout.write('\r\x1B[K'); // 行をクリア
+
+    let progressText = `\x1b[32m  Fetching GitHub reviews${this.dots[this.currentFrame]}\x1b[0m`;
+
+    if (this.total > 0) {
+      const percentage = Math.round((this.progress / this.total) * 100);
+      const progressBar = this.createProgressBar(percentage);
+      progressText += ` ${progressBar} ${percentage}% (${this.progress}/${this.total})`;
+    }
+
+    process.stdout.write(progressText);
+  }
+
+  private createProgressBar(percentage: number, width: number = 20): string {
+    const filled = Math.round((percentage / 100) * width);
+    const empty = width - filled;
+
+    const filledBar = '█'.repeat(filled);
+    const emptyBar = '░'.repeat(empty);
+
+    return `\x1b[36m[${filledBar}${emptyBar}]\x1b[0m`;
   }
 
   stop(finalMessage?: string) {
@@ -111,13 +141,11 @@ function sanitizeErrorMessage(error: unknown): string {
 
 export class GitHubReviewsTracker {
   private octokit: Octokit;
-  private token: string;
   private lastApiCall: number = 0;
   private readonly API_DELAY = 100; // 100ms delay between requests (10 req/sec, well under 5000/hour limit)
   private loader?: ASCIILoader;
 
   constructor(token: string) {
-    this.token = token;
     this.octokit = new Octokit({
       auth: token,
     });
@@ -128,6 +156,13 @@ export class GitHubReviewsTracker {
   private startLoading() {
     if (this.loader) {
       this.loader.start();
+    }
+  }
+
+  // プログレス更新
+  private updateProgress(current: number, total: number) {
+    if (this.loader) {
+      this.loader.updateProgress(current, total);
     }
   }
 
@@ -208,7 +243,6 @@ export class GitHubReviewsTracker {
       state = "all",
       per_page = 30,
       page = 1,
-      org = null,
       timeframe = null,
     } = options;
 
@@ -265,10 +299,15 @@ export class GitHubReviewsTracker {
       }
 
 
+      // プログレスの初期化
+      this.updateProgress(0, pullRequests.items.length);
+
       for (let i = 0; i < pullRequests.items.length; i++) {
         const pr = pullRequests.items[i];
         if (!pr.repository_url) continue;
 
+        // プログレス更新
+        this.updateProgress(i + 1, pullRequests.items.length);
 
         const [owner, repo] = pr.repository_url.split("/").slice(-2);
 
@@ -438,15 +477,15 @@ export class GitHubReviewsTracker {
         commented: reviews.filter((r) => r.state === "COMMENTED").length,
       };
 
-      markdown += `## 📊 統計情報\n\n`;
-      markdown += `- ✅ 承認済み: ${stats.approved}件\n`;
-      markdown += `- 🔄 変更要求: ${stats.changes_requested}件\n`;
-      markdown += `- 💬 コメントのみ: ${stats.commented}件\n\n`;
+      markdown += `## 📊 Statistics (統計情報)\n\n`;
+      markdown += `- ✅ Approved (承認済み): ${stats.approved}件\n`;
+      markdown += `- 🔄 Changes Requested (変更要求): ${stats.changes_requested}件\n`;
+      markdown += `- 💬 Commented (コメントのみ): ${stats.commented}件\n\n`;
     }
 
     if (reviews.length === 0) {
-      markdown += `## 📝 レビュー一覧\n\n`;
-      markdown += `該当するレビューが見つかりませんでした。\n`;
+      markdown += `## 📝 Review List (レビュー一覧)\n\n`;
+      markdown += `No reviews found matching the criteria. (該当するレビューが見つかりませんでした。)\n`;
       return markdown;
     }
 
@@ -483,18 +522,18 @@ export class GitHubReviewsTracker {
         new Date(a.reviews[0].submitted_at).getTime()
     );
 
-    markdown += `## 📋 目次\n\n`;
+    markdown += `## 📋 Table of Contents (目次)\n\n`;
 
     // PRごとの目次
-    markdown += `### プルリクエスト一覧\n\n`;
+    markdown += `### Pull Request List (プルリクエスト一覧)\n\n`;
     sortedPrGroups.forEach((prGroup) => {
       const anchorId = `pr-${prGroup.repository.replace('/', '-')}-${prGroup.pr_number}`;
-      markdown += `- [${prGroup.pr_title}](#${anchorId}) - **${prGroup.reviews.length}件のレビュー** (${prGroup.repository}#${prGroup.pr_number})\n`;
+      markdown += `- [${prGroup.pr_title}](#${anchorId}) - **${prGroup.reviews.length} reviews (レビュー)** (${prGroup.repository}#${prGroup.pr_number})\n`;
     });
     markdown += `\n`;
 
     // レビューコメント一覧の目次（PR別にグループ化）
-    markdown += `### レビューコメント一覧\n\n`;
+    markdown += `### Review Comments List (レビューコメント一覧)\n\n`;
     sortedPrGroups.forEach((prGroup) => {
       // PR見出し
       markdown += `#### ${prGroup.pr_title}\n\n`;
@@ -521,6 +560,13 @@ export class GitHubReviewsTracker {
           DISMISSED: "❌",
         };
 
+        const stateLabels: Record<ReviewState, string> = {
+          APPROVED: "APPROVED (承認済み)",
+          CHANGES_REQUESTED: "CHANGES_REQUESTED (変更要求)",
+          COMMENTED: "COMMENTED (コメント)",
+          DISMISSED: "DISMISSED (却下)",
+        };
+
         const reviewAnchorId = `review-${prGroup.repository.replace('/', '-')}-${prGroup.pr_number}-${review.reviewer}-${new Date(review.submitted_at).getTime()}`;
         let reviewTitle = '';
 
@@ -536,12 +582,13 @@ export class GitHubReviewsTracker {
         }
 
         const reviewDate = new Date(review.submitted_at).toLocaleDateString('ja-JP');
-        markdown += `- ${stateEmoji[review.state as ReviewState] || "❓"} [${review.reviewer}: ${reviewTitle}](#${reviewAnchorId}) _(${reviewDate})_\n`;
+        const stateLabel = stateLabels[review.state as ReviewState] || review.state;
+        markdown += `- ${stateEmoji[review.state as ReviewState] || "❓"} [${stateLabel} by ${review.reviewer}: ${reviewTitle}](#${reviewAnchorId}) _(${reviewDate})_\n`;
       });
       markdown += `\n`;
     });
 
-    markdown += `## 📝 レビュー詳細\n\n`;
+    markdown += `## 📝 Review Details (レビュー詳細)\n\n`;
 
     sortedPrGroups.forEach((prGroup) => {
         const anchorId = `pr-${prGroup.repository.replace('/', '-')}-${prGroup.pr_number}`;
@@ -571,16 +618,24 @@ export class GitHubReviewsTracker {
           };
 
           const reviewAnchorId = `review-${prGroup.repository.replace('/', '-')}-${prGroup.pr_number}-${review.reviewer}-${new Date(review.submitted_at).getTime()}`;
-          markdown += `#### <a id="${reviewAnchorId}"></a>${stateEmoji[review.state as ReviewState] || "❓"} ${review.state} by [@${review.reviewer}](https://github.com/${review.reviewer})\n\n`;
-          markdown += `**日時:** ${new Date(review.submitted_at).toLocaleString("ja-JP")}\n\n`;
+
+          const stateLabels: Record<ReviewState, string> = {
+            APPROVED: "APPROVED (承認済み)",
+            CHANGES_REQUESTED: "CHANGES_REQUESTED (変更要求)",
+            COMMENTED: "COMMENTED (コメント)",
+            DISMISSED: "DISMISSED (却下)",
+          };
+
+          markdown += `#### <a id="${reviewAnchorId}"></a>${stateEmoji[review.state as ReviewState] || "❓"} ${stateLabels[review.state as ReviewState] || review.state} by [@${review.reviewer}](https://github.com/${review.reviewer})\n\n`;
+          markdown += `**Date (日時):** ${new Date(review.submitted_at).toLocaleString("ja-JP")}\n\n`;
 
           if (review.body && review.body.trim()) {
-            markdown += `**コメント:**\n> ${review.body.replace(/\n/g, "\n> ")}\n\n`;
+            markdown += `**Comment (コメント):**\n> ${review.body.replace(/\n/g, "\n> ")}\n\n`;
           }
 
           // コードコメントを表示
           if (review.comments && review.comments.length > 0) {
-            markdown += `**コードコメント:**\n\n`;
+            markdown += `**Code Comments (コードコメント):**\n\n`;
 
             review.comments.forEach((comment, index) => {
               if (comment.path) {
@@ -649,7 +704,7 @@ export class GitHubReviewsTracker {
               markdown += `> 💬 ${comment.body.replace(/\n/g, "\n> ")}\n\n`;
 
               if (comment.url) {
-                markdown += `[🔗 コメントを表示](${comment.url})\n\n`;
+                markdown += `[🔗 View Comment (コメントを表示)](${comment.url})\n\n`;
               }
 
               if (review.comments && index < review.comments.length - 1) {
@@ -657,11 +712,11 @@ export class GitHubReviewsTracker {
               }
             });
           } else {
-            markdown += `_（コードコメントなし）_\n\n`;
+            markdown += `_(No code comments / コードコメントなし)_\n\n`;
           }
 
           if (review.review_url) {
-            markdown += `**[📖 レビュー全体を表示](${review.review_url})**\n\n`;
+            markdown += `**[📖 View Full Review (レビュー全体を表示)](${review.review_url})**\n\n`;
           }
 
           markdown += `---\n\n`;
