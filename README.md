@@ -78,6 +78,22 @@ This project follows safe practices for handling credentials and install-time be
 
 If you discover a security issue, please open a GitHub Issue in this repository (preferable) and follow the reporting guidance in `.github/SECURITY.md`.
 
+### Local secret scan (Gitleaks)
+
+You can run a local secret scan using gitleaks. This repository includes a `.gitleaks.toml` with common patterns.
+
+Install and run locally:
+
+```bash
+# install (Linux/macOS)
+brew install gitleaks || go install github.com/zricethezav/gitleaks/v8@latest
+
+# run scan
+gitleaks detect --source . --config .gitleaks.toml --report-path gitleaks-report.json
+```
+
+A GitHub Action (`.github/workflows/gitleaks.yml`) runs gitleaks on PRs and pushes to `main`.
+
 That's it! 🎉
 
 ## Overview

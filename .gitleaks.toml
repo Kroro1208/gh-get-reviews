@@ -1,0 +1,35 @@
+title = "gitleaks config for gh-get-reviews"
+
+[[rules]]
+description = "GitHub personal access token"
+regex = '''ghp_[A-Za-z0-9_]{36,}'''
+tags = ["token", "github"]
+
+[[rules]]
+description = "NPM token or npm auth token"
+regex = '''(NPM_TOKEN|NODE_AUTH_TOKEN|npm_token)\s*=\s*[A-Za-z0-9_\-\.=]{20,}'''
+tags = ["token", "npm"]
+
+[[rules]]
+description = "Private key header (RSA PRIVATE KEY)"
+regex = '''-----BEGIN (RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----'''
+tags = ["private-key", "pem"]
+
+[[rules]]
+description = "AWS Access Key ID"
+regex = '''AKIA[0-9A-Z]{16}'''
+tags = ["aws"]
+
+[[rules]]
+description = "Slack webhook URL"
+regex = '''https?://hooks\.slack\.com/services/[A-Z0-9_/]+'''
+tags = ["slack"]
+
+# Allowlist example (to prevent false positives on known test fixtures)
+[allowlist]
+# paths = ["tests/fixtures/*"]
+
+
+# Notes:
+# - This is a compact personal-repo focused config. Adjust regex and allowlist for your project.
+# - For production use, consider using the official gitleaks default rules + your additions.
