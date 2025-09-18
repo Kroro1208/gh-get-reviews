@@ -71,7 +71,7 @@ This project follows safe practices for handling credentials and install-time be
 - The CLI will create `~/.get-gh-reviews.env` only on first run and attempts to set restrictive file permissions (0600). Storing tokens in this file is optional and not recommended for shared machines.
 - This package does not run `postinstall` or other automatic install-time scripts. If you are operating in a high-security environment, consider installing with `npm_config_ignore_scripts=1`.
 
-If you discover a security issue, please open an issue and follow the reporting steps in `SECURITY.md` (added to this repository).
+If you discover a security issue, please open a GitHub Issue in this repository (preferable) and follow the reporting guidance in `.github/SECURITY.md`.
 
 That's it! 🎉
 
