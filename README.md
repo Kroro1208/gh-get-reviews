@@ -1,5 +1,10 @@
 # 🔍 get-gh-reviews
 
+
+https://github.com/user-attachments/assets/75d68f2d-7bf3-4468-b97b-4f41066664e5
+
+
+
 [![npm version](https://badge.fury.io/js/get-gh-reviews.svg)](https://badge.fury.io/js/get-gh-reviews)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 [![Node.js](https://img.shields.io/badge/Node.js-14.0.0+-green.svg)](https://nodejs.org/)
@@ -717,4 +722,4 @@ If this tool helped you track your reviews and improve your workflow:
 
 **Made with ❤️ for the developer community**
 
-_This tool addresses the missing GitHub feature of tracking reviews received - helping developers worldwide understand their code review patterns and build better relationships with their teams._
+This tool addresses the missing GitHub feature of tracking reviews received — helping developers understand their review patterns and build better relationships with their teams. faa591e87417c674aeed781b4c420d42145903d9
