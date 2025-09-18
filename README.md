@@ -1,9 +1,6 @@
 # 🔍 get-gh-reviews
 
-
 https://github.com/user-attachments/assets/75d68f2d-7bf3-4468-b97b-4f41066664e5
-
-
 
 [![npm version](https://badge.fury.io/js/get-gh-reviews.svg)](https://badge.fury.io/js/get-gh-reviews)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
