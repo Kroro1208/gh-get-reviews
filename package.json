@@ -16,6 +16,8 @@
     "security-scan": "npx semgrep --config=auto || echo 'semgrep not installed'",
     "dev": "ts-node src/cli.ts",
     "example": "ts-node src/example.ts",
+    "prepare": "husky install",
+    "husky:install": "husky install",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "files": [

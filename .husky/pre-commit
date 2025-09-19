@@ -1,0 +1,16 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Run gitleaks before commit
+# If gitleaks is not installed locally, this will fail; developers should install gitleaks locally.
+# Recommended: brew install gitleaks or go install github.com/zricethezav/gitleaks/v8@latest
+
+echo "Running gitleaks pre-commit scan..."
+
+# run gitleaks detect; create a temporary report and fail if findings
+gitleaks detect --source . --config .gitleaks.toml --report-path .git/gitleaks-pre-commit.json || {
+  echo "gitleaks detected potential secrets. Commit aborted. See .git/gitleaks-pre-commit.json for details.";
+  exit 1;
+}
+
+echo "gitleaks passed."
