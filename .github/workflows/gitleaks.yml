@@ -17,10 +17,36 @@ jobs:
       - name: Run gitleaks scan
         uses: zricethezav/gitleaks-action@v2
         with:
-          args: --config=.gitleaks.toml --redact
+          args: --config=.gitleaks.toml --report-format json --report-path gitleaks-report.json --redact
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: gitleaks-report
           path: gitleaks-report.json
+
+      - name: Create Issue if findings
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'gitleaks-report.json';
+            if (!fs.existsSync(path)) {
+              core.info('No gitleaks report found');
+              return;
+            }
+            const report = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const findings = report.findings || report.length || 0;
+            if (!findings || findings === 0) {
+              core.info('No findings in gitleaks report');
+              return;
+            }
+            // Build issue body
+            const body = `gitleaks detected ${report.findings.length} potential secrets. See attached report.`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Security: gitleaks detected ${report.findings.length} potential secrets on ${process.env.GITHUB_REF || 'workflow'}`,
+              body,
+            });
