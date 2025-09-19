@@ -15,15 +15,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install gitleaks
+      - name: Install gitleaks (go install)
+        env:
+          GOPATH: /tmp/gopath
+          GOBIN: /tmp/gitleaks_bin
         run: |
-          echo "Installing gitleaks"
-          ARCH=$(uname | tr '[:upper:]' '[:lower:]')
-          URL="https://github.com/zricethezav/gitleaks/releases/latest/download/gitleaks_${ARCH}_amd64.tar.gz"
-          wget -qO /tmp/gitleaks.tar.gz "$URL"
-          tar -xzf /tmp/gitleaks.tar.gz -C /tmp
-          chmod +x /tmp/gitleaks
-          /tmp/gitleaks version
+          echo "Installing gitleaks via go install"
+          # ensure go is available on runner
+          go version || (echo "go is not available in runner" && exit 1)
+          mkdir -p /tmp/gitleaks_bin
+          GOPATH=/tmp/gopath GOBIN=/tmp/gitleaks_bin go install github.com/zricethezav/gitleaks/v8@latest
+          ls -la /tmp/gitleaks_bin
+          /tmp/gitleaks_bin/gitleaks version
 
       - name: Run gitleaks CLI
         run: |
